@@ -1,2 +1,7 @@
-.venv/
-page.json
+#Ignore everything
+*
+
+#Unignore:
+!scraper.py
+!.gitignore
+!requirements.txt
