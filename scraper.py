@@ -30,11 +30,13 @@ def extract_urls(info):
     return product_url_list
 
 def create_product_directory(product_uuid):
+    """products ----> {UUID} ----> images ----> {UUID}_idx"""
     product_path = os.path.join("products", product_uuid, "images")
     os.makedirs(product_path, exist_ok = True)
     return product_path
 
 def create_product_info_directory(query = search_query):
+    """products_info ----> {query} ----> {UUID}.json"""
     info_path = os.path.join("products_info", query)
     os.makedirs(info_path, exist_ok = True)
     return info_path
