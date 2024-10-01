@@ -92,6 +92,7 @@ def extract_images(product_url):
         image_folder_path = create_product_directory(product_uuid)
     
         for idx, image in enumerate(image_list):
+            counter["extracted_images"] = 0
             response = requests.get(image)
             response.raise_for_status()
             if response.status_code == 200:
@@ -101,9 +102,11 @@ def extract_images(product_url):
                     file.write(response.content)
 
                 counter["extracted_images"] += 1
+                counter["total_extracted_images"] += counter["extracted_images"]
                 
         logging.debug(f"{counter['extracted_images']}/{counter["total_image_urls"]} images are extracted for {index}/{counter['extracted_products']} products at path: {image_folder_path}")
-    
+        logging.debug(f"Total extracted image count is: {counter["total_extracted_images"]}")
+
     logging.info("Images extracted successfully")
     print("Images downloaded successfully.")
 
@@ -142,8 +145,7 @@ def requests_api(asin_code, query, product=True, domain='com', country='us', pag
 def generate_uuid():
     return str(uuid.uuid4())
 
-if __name__ == "__main__":
-    """Main execution block to fetch search results and extract images."""
+def logger_setup():
     logging.basicConfig(
         filename= "scraper.log",
         filemode= "w",
@@ -152,7 +154,12 @@ if __name__ == "__main__":
         format= "[{asctime}] [{levelname}] [{funcName}: {lineno}] - {message}",
         level= logging.DEBUG
     )
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("requests").setLevel(logging.WARNING)
 
+if __name__ == "__main__":
+    """Main execution block to fetch search results and extract images."""
+    logger_setup()
     logging.info("Initializing scraper...")
     response = requests_api(query = search_query, product=False, asin_code="")
 
