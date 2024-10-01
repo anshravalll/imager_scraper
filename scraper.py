@@ -9,6 +9,8 @@ from collections import Counter
 # Load environment variables from .env file
 load_dotenv()
 
+global extractor
+extractor = True
 global counter
 counter = Counter()
 global search_query
@@ -50,41 +52,74 @@ def create_product_info_directory(query = search_query):
     os.makedirs(info_path, exist_ok = True)
     return info_path
 
-def extract_product_details(product_url):
+def extract_product_details_from_directory(folder_path):
+    """Extract JSON files that contains product details"""
+    logging.debug(f"Attempting to extract JSON files from path: {folder_path}")
+    products = []
+    counter["total_product_json"] = len(os.listdir(folder_path))
+    for filename in os.listdir(folder_path):
+        if filename.endswith(".json"):
+            file_path = os.path.join(folder_path, filename)
+            filename_without_extention = os.path.splitext(filename)[0]
+
+            with open(file_path, 'r') as file:
+                info = json.load(file)
+                product_uuid = filename_without_extention
+                products.append((info, product_uuid))
+
+            counter["extracted_products"] += 1
+            logging.debug(f"{counter["extracted_product_json"]}/{counter["total_product_json"]} JSON files has been extracted")
+            print(f"{counter["extracted_product_json"]}/{counter["total_product_json"]} JSON extracted.")
+    
+    logging.info("JSON extraction completed")
+    print("")
+    print("JSON extraction completed")
+    print("")
+    return products
+
+def extract_product_details(product_url, product_json_directory = ""):
     """Extract product details for every product in the product_url list."""
     logging.info("Individual product extraction begins...")
     products = []
-    for product in product_url:
-        asin_code = product[1] 
-        product_uuid = product[2]
-        response = requests_api(asin_code, query="")
-        response.raise_for_status()
-        info = response.json() 
-        products.append((info, product_uuid))
-        info_folder_path = create_product_info_directory()
-        full_path = f"{info_folder_path}/{product_uuid}.json" 
+
+    if not product_json_directory:
+        for product in product_url:
+            asin_code = product[1] 
+            product_uuid = product[2]
+            response = requests_api(asin_code, query="")
+            response.raise_for_status()
+            info = response.json() 
+            products.append((info, product_uuid))
+            info_folder_path = create_product_info_directory()
+            full_path = f"{info_folder_path}/{product_uuid}.json" 
     
-        with open(full_path, "w") as file:
-            json.dump(info, file, indent=4)
+            with open(full_path, "w") as file:
+                json.dump(info, file, indent=4)
     
-        counter["extracted_products"] += 1
-        logging.debug(f"{counter['extracted_products']} of {counter['extracted_product_urls']} product urls has been extracted at {full_path}")
-        print(f"{counter['extracted_products']} of {counter['extracted_product_urls']} extracted")
+            counter["extracted_products"] += 1
+            logging.debug(f"{counter['extracted_products']} of {counter['extracted_product_urls']} product urls has been extracted at {full_path}")
+            print(f"{counter['extracted_products']} of {counter['extracted_product_urls']} extracted")
+
     
-    if counter["extracted_products"] != counter["extracted_product_urls"]:
-        missing_product_num = counter["extracted_product_urls"] - counter["extracted_products"]
-        logging.warning(f"Out of {counter['extracted_product_urls']}, number of missed products are: {missing_product_num}")
+        if counter["extracted_products"] != counter["extracted_product_urls"]:
+            missing_product_num = counter["extracted_product_urls"] - counter["extracted_products"]
+            logging.warning(f"Out of {counter['extracted_product_urls']}, number of missed products are: {missing_product_num}")
+
+        else:
+            logging.info("Product detail extraction completed.")
+
+        print("")
+        print("Product details extracted.")
+        print("")
 
     else:
-        logging.info("Product detail extraction completed.")
-
-    print("Product details extracted.")
-    print("")
+        products = extract_product_details_from_directory(product_json_directory)
+        
     return products 
 
-def extract_images(product_url):
+def extract_images(product_url = [], product_json_directory = ""):
     """Extract images from the given product URLs."""
-    products = extract_product_details(product_url)
+    products = extract_product_details(product_url, product_json_directory)
     for index, product in enumerate(products):
         info, product_uuid = product[0], product[1]
         image_list = list(set(info.get("images")))
@@ -160,22 +195,33 @@ def logger_setup():
 if __name__ == "__main__":
     """Main execution block to fetch search results and extract images."""
     logger_setup()
-    logging.info("Initializing scraper...")
-    response = requests_api(query = search_query, product=False, asin_code="")
 
-    if response.status_code == 200:
-        info = response.json()
-        with open("page.json", "a") as file:
-            json.dump(info, file, indent=4)
-        print("Search response received.")
-        
+    if extractor == True:
+        logging.info("Initializing extractor")
         try:
-            product_url = extract_urls(info)
-            extract_images(product_url)
+            extract_images(product_json_directory= "products_info/Indian lehenga")
         except requests.exceptions.HTTPError as err:
             print(f"Error occurred: {err}")
             logging.exception("View the stack trace below to catch the issue.")
-    else:
-        print(f"Request failed with status code: {response.status_code}")
+        logging.info("Stopping extractor")
 
-    logging.info("Stopping scraper execution.")
+    else:
+        logging.info("Initializing scraper...")
+        response = requests_api(query = search_query, product=False, asin_code="")
+
+        if response.status_code == 200:
+            info = response.json()
+            with open("page.json", "a") as file:
+                json.dump(info, file, indent=4)
+            print("Search response received.")
+        
+            try:
+                product_url = extract_urls(info)
+                extract_images(product_url)
+            except requests.exceptions.HTTPError as err:
+                print(f"Error occurred: {err}")
+                logging.exception("View the stack trace below to catch the issue.")
+        else:
+            print(f"Request failed with status code: {response.status_code}")
+
+        logging.info("Stopping scraper execution.")
