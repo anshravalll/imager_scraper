@@ -67,7 +67,7 @@ def extract_product_details_from_directory(folder_path):
                 product_uuid = filename_without_extention
                 products.append((info, product_uuid))
 
-            counter["extracted_products"] += 1
+            counter["extracted_product_json"] += 1
             logging.debug(f"{counter["extracted_product_json"]}/{counter["total_product_json"]} JSON files has been extracted")
             print(f"{counter["extracted_product_json"]}/{counter["total_product_json"]} JSON extracted.")
     
