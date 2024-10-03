@@ -181,6 +181,7 @@ def generate_uuid():
     return str(uuid.uuid4())
 
 def logger_setup():
+    """Setting up logger for application logging"""
     logging.basicConfig(
         filename= "scraper.log",
         filemode= "w",
