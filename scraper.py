@@ -122,6 +122,11 @@ def extract_images(product_url = [], product_json_directory = ""):
     products = extract_product_details(product_url, product_json_directory)
     for index, product in enumerate(products):
         info, product_uuid = product[0], product[1]
+
+        #Skip the info which contains multiple nested products through customization options
+        if info.get("customization_options").get("color"): 
+            continue
+
         image_url_list = list(set(info.get("images")))
         counter["total_image_urls"] = len(image_url_list)
         image_folder_path = create_product_directory(product_uuid)
