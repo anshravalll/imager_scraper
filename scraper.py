@@ -122,25 +122,29 @@ def extract_images(product_url = [], product_json_directory = ""):
     products = extract_product_details(product_url, product_json_directory)
     for index, product in enumerate(products):
         info, product_uuid = product[0], product[1]
-        image_list = list(set(info.get("images")))
-        counter["total_image_urls"] = len(image_list)
+        image_url_list = list(set(info.get("images")))
+        counter["total_image_urls"] = len(image_url_list)
         image_folder_path = create_product_directory(product_uuid)
     
-        for idx, image in enumerate(image_list):
+        for idx, image in enumerate(image_url_list):
             counter["extracted_images"] = 0
-            response = requests.get(image)
-            response.raise_for_status()
-            if response.status_code == 200:
-                image_name = f"{product_uuid}_{idx + 1}.jpg"
+            image_name = f"{product_uuid}_{idx + 1}.jpg"
+            if not os.path.exists(f"{image_folder_path}/{image_name}"):
+                response = requests.get(image)
+                response.raise_for_status()
+                if response.status_code == 200:
 
-                with open(f"{image_folder_path}/{image_name}", "wb") as file:
-                    file.write(response.content)
+                    with open(f"{image_folder_path}/{image_name}", "wb") as file:
+                        file.write(response.content)
 
-                counter["extracted_images"] += 1
+                    counter["extracted_images"] += 1
                 counter["total_extracted_images"] += counter["extracted_images"]
+
+            else:
+               counter["existing_images"] += 1
                 
-        logging.debug(f"{counter['extracted_images']}/{counter["total_image_urls"]} images are extracted for {index}/{counter['extracted_products']} products at path: {image_folder_path}")
-        logging.debug(f"Total extracted image count is: {counter["total_extracted_images"]}")
+        logging.debug(f"{counter['extracted_images']}/{counter["total_image_urls"]} images are extracted for {index}/{len(products)} products at path: {image_folder_path}")
+        logging.debug(f"Total extracted image count is: {counter["total_extracted_images"]} with existing image count of: {counter["existing_images"]}")
 
     logging.info("Images extracted successfully")
     print("Images downloaded successfully.")
