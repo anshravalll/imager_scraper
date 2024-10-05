@@ -11,14 +11,52 @@ from collections import Counter
 load_dotenv()
 
 global extractor
-extractor = False
+extractor = False 
 global counter
 counter = Counter()
 global search_query
-search_query = "Indian lehenga"
+search_query = "Chaniya choli"
 
 def generate_uuid():
     return str(uuid.uuid4())
+
+def is_unique_asin(asin, asin_set = set()):
+    if asin not in asin_set:
+        return True
+
+    logging.debug(f"{asin} already exists")
+    return False
+
+def append_asin(asin, filepath, asin_set = set()):
+    asin_set.add(asin)
+    with open(filepath, "a") as file:
+        file.write(f"{asin}\n")
+
+def asin_loader(filepath = "asin_archive.txt"):
+    asin_set = set()
+    if os.path.exists(filepath):
+        with open(filepath, 'r') as file:
+            asins = file.readlines()
+            for line in asins:
+                asin_set.add(line.strip())
+    return asin_set
+
+def asin_handler(asin):
+    filepath = "asin_archive.txt"
+    if os.path.exists(filepath):
+        asin_set = asin_loader()
+
+        if is_unique_asin(asin, asin_set):
+            append_asin(asin, filepath, asin_set)
+            return True
+        else:
+            return False
+
+    else:
+        with open(filepath, "a") as file:
+            pass
+        append_asin(asin, filepath)
+        return True
 
 def extract_urls(info):
     """Extract specific product URLs from the search results."""
@@ -100,7 +138,17 @@ def create_product_directory(info):
         "Title": sanitize_folder_name(info.get("title"))
     }
     product_path = os.path.join(*directory_structure.values(), "Images")
-    os.makedirs(product_path, exist_ok = True)
+    
+    # Prepend \\?\ to handle long paths on Windows
+    if os.name == 'nt':
+        product_path = '\\\\?\\' + os.path.abspath(product_path)
+    
+    try:
+        os.makedirs(product_path, exist_ok=True)
+    except Exception as e:
+        logging.error(f"Failed to create directory {product_path}: {e}")
+        raise
+    
     return product_path
 
 def create_product_info_directory(query = search_query):
@@ -143,6 +191,11 @@ def extract_product_details(product_url, product_json_directory = ""):
         for product in product_url:
             asin_code = product[1] 
             product_uuid = product[2]
+
+            if not asin_handler(asin_code): #if asin_handler is True, the asin code already exists in the archival
+                counter["existing_products"] += 1
+                continue
+
             response = requests_api(asin_code, query="")
             response.raise_for_status()
             info = response.json() 
@@ -154,11 +207,11 @@ def extract_product_details(product_url, product_json_directory = ""):
                 json.dump(info, file, indent=4)
     
             counter["extracted_products"] += 1
-            logging.debug(f"{counter['extracted_products']} of {counter['extracted_product_urls']} product urls has been extracted at {full_path}")
-            print(f"{counter['extracted_products']} of {counter['extracted_product_urls']} extracted")
+            logging.debug(f"{counter['extracted_products']}/{counter['extracted_product_urls']} product urls has been extracted at {full_path}")
+            print(f"{counter['extracted_products']}/{counter['extracted_product_urls']} extracted")
 
     
-        if counter["extracted_products"] != counter["extracted_product_urls"]:
+        if counter["extracted_products"] != counter["extracted_product_urls"] - counter["existing_products"]:
             missing_product_num = counter["extracted_product_urls"] - counter["extracted_products"]
             logging.warning(f"Out of {counter['extracted_product_urls']}, number of missed products are: {missing_product_num}")
 
@@ -187,16 +240,16 @@ def extract_images(product_url = [], product_json_directory = ""):
         image_url_list = list(set(info.get("images")))
         counter["total_image_urls"] = len(image_url_list)
         image_folder_path = create_product_directory(info)
+        counter["extracted_images"] = 0
     
         for idx, image in enumerate(image_url_list):
-            counter["extracted_images"] = 0
             image_name = f"{product_uuid}_{idx + 1}.jpg"
             if not os.path.exists(f"{image_folder_path}/{image_name}"):
                 response = requests.get(image)
                 response.raise_for_status()
                 if response.status_code == 200:
-
-                    with open(f"{image_folder_path}/{image_name}", "wb") as file:
+                    image_path = os.path.join(image_folder_path, image_name)
+                    with open(image_path, "wb") as file:
                         file.write(response.content)
 
                     counter["extracted_images"] += 1
@@ -205,7 +258,7 @@ def extract_images(product_url = [], product_json_directory = ""):
             else:
                counter["existing_images"] += 1
                 
-        logging.debug(f"{counter['extracted_images']}/{counter["total_image_urls"]} images are extracted for {index}/{len(products)} products at path: {image_folder_path}")
+        logging.debug(f"{counter['extracted_images']}/{counter["total_image_urls"]} images are extracted for {index + 1}/{len(products)} products at path: {image_folder_path}")
         logging.debug(f"Total extracted image count is: {counter["total_extracted_images"]} with existing image count of: {counter["existing_images"]}")
 
     logging.info("Images extracted successfully")
@@ -271,7 +324,7 @@ if __name__ == "__main__":
 
     else:
         logging.info("Initializing scraper...")
-        response = requests_api(query = search_query, product=False, asin_code="", page = 2)
+        response = requests_api(query = search_query, product=False, asin_code="", page = 3)
 
         if response.status_code == 200:
             info = response.json()
