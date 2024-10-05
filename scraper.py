@@ -1,6 +1,7 @@
 import requests
 import json
 import os
+import re
 import uuid
 import logging
 from dotenv import load_dotenv
@@ -10,11 +11,14 @@ from collections import Counter
 load_dotenv()
 
 global extractor
-extractor = True
+extractor = False
 global counter
 counter = Counter()
 global search_query
 search_query = "Indian lehenga"
+
+def generate_uuid():
+    return str(uuid.uuid4())
 
 def extract_urls(info):
     """Extract specific product URLs from the search results."""
@@ -40,14 +44,67 @@ def extract_urls(info):
     print('URLs and ASINs provided.')
     return product_url_list
 
-def create_product_directory(product_uuid):
-    """products ----> {UUID} ----> images ----> {UUID}_idx"""
-    product_path = os.path.join("products", product_uuid, "images")
+def sanitize_folder_name(name, chr_set='printable'):
+    """Converts name to a valid filename.
+
+    Args:
+        name: The str to convert.
+        chr_set:
+            'printable':    Any printable character except those disallowed on Windows/*nix.
+            'extended':     'printable' + extended ASCII character codes 128-255
+            'universal':    For almost *any* file system. '-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+    """
+
+    FILLER = '-'  # Character to replace illegal characters
+    MAX_LEN = 255  # Maximum length of filename is 255 bytes in Windows and some *nix flavors.
+
+    # Step 1: Remove excluded characters.
+    BLACK_LIST = set(chr(127) + r'<>:"/\|?*')  # 127 is unprintable, the rest are illegal in Windows.
+    white_lists = {
+        'universal': set('-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'),
+        'printable': {chr(x) for x in range(32, 127)} - BLACK_LIST,  # 0-32, 127 are unprintable,
+        'extended': {chr(x) for x in range(32, 256)} - BLACK_LIST,
+    }
+    white_list = white_lists[chr_set]
+    result = ''.join(x if x in white_list else FILLER for x in name)
+
+    # Step 2: Device names, '.', and '..' are invalid filenames in Windows.
+    DEVICE_NAMES = 'CON,PRN,AUX,NUL,COM1,COM2,COM3,COM4,' \
+                   'COM5,COM6,COM7,COM8,COM9,LPT1,LPT2,' \
+                   'LPT3,LPT4,LPT5,LPT6,LPT7,LPT8,LPT9,' \
+                   'CONIN$,CONOUT$,..,.'.split(',')  # This list is an O(n) operation.
+    if result in DEVICE_NAMES:
+        result = f'{FILLER}{result}{FILLER}'
+
+    # Step 3: Truncate long files while preserving the file extension.
+    if len(result) > MAX_LEN:
+        if '.' in name:
+            result, _, ext = result.rpartition('.')
+            ext = '.' + ext
+        else:
+            ext = ''
+        result = result[:MAX_LEN - len(ext)] + ext
+
+    # Step 4: Windows does not allow filenames to end with '.' or ' ' or begin with ' '.
+    result = re.sub(r'^[. ]', FILLER, result)
+    result = re.sub(r' $', FILLER, result)
+
+    return result
+
+def create_product_directory(info):
+    """SOURCE → SECTION → CATEGORY → ITEM NAME → COLOR → IMAGES"""
+    directory_structure = {
+        "Source": "Amazon",
+        "Section": "Women",
+        "Category": search_query,
+        "Title": sanitize_folder_name(info.get("title"))
+    }
+    product_path = os.path.join(*directory_structure.values(), "Images")
     os.makedirs(product_path, exist_ok = True)
     return product_path
 
 def create_product_info_directory(query = search_query):
-    """products_info ----> {query} ----> {UUID}.json"""
+    """products_info → {query} → {UUID}.json"""
     info_path = os.path.join("products_info", query)
     os.makedirs(info_path, exist_ok = True)
     return info_path
@@ -129,7 +186,7 @@ def extract_images(product_url = [], product_json_directory = ""):
 
         image_url_list = list(set(info.get("images")))
         counter["total_image_urls"] = len(image_url_list)
-        image_folder_path = create_product_directory(product_uuid)
+        image_folder_path = create_product_directory(info)
     
         for idx, image in enumerate(image_url_list):
             counter["extracted_images"] = 0
@@ -143,7 +200,7 @@ def extract_images(product_url = [], product_json_directory = ""):
                         file.write(response.content)
 
                     counter["extracted_images"] += 1
-                counter["total_extracted_images"] += counter["extracted_images"]
+                    counter["total_extracted_images"] += counter["extracted_images"]
 
             else:
                counter["existing_images"] += 1
@@ -154,7 +211,7 @@ def extract_images(product_url = [], product_json_directory = ""):
     logging.info("Images extracted successfully")
     print("Images downloaded successfully.")
 
-def requests_api(asin_code, query, product=True, domain='com', country='us', page='1'):
+def requests_api(asin_code, query, product=True, domain='com', country='us', page=1):
     """Make API requests to fetch product or search data."""
     api_key = os.getenv('scrapingdog_api')
     search_url = "https://api.scrapingdog.com/amazon/search"
@@ -164,7 +221,7 @@ def requests_api(asin_code, query, product=True, domain='com', country='us', pag
         "api_key": api_key,
         "domain": domain,
         "query": query,
-        "page": page,
+        "page": str(page),
         "country": country
     }
 
@@ -185,9 +242,6 @@ def requests_api(asin_code, query, product=True, domain='com', country='us', pag
     logging.debug(f"Got the respones with status code: {response.status_code}")
     
     return response
-
-def generate_uuid():
-    return str(uuid.uuid4())
 
 def logger_setup():
     """Setting up logger for application logging"""
@@ -217,7 +271,7 @@ if __name__ == "__main__":
 
     else:
         logging.info("Initializing scraper...")
-        response = requests_api(query = search_query, product=False, asin_code="")
+        response = requests_api(query = search_query, product=False, asin_code="", page = 2)
 
         if response.status_code == 200:
             info = response.json()
