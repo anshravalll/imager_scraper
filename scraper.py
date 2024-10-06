@@ -15,7 +15,7 @@ extractor = False
 global counter
 counter = Counter()
 global search_query
-search_query = "Chaniya choli"
+search_query ="Silk cehenga choli"
 
 def generate_uuid():
     return str(uuid.uuid4())
@@ -42,6 +42,7 @@ def asin_loader(filepath = "asin_archive.txt"):
     return asin_set
 
 def asin_handler(asin):
+    """Handle ASIN archival and return True if ASIN is unique and not see before"""
     filepath = "asin_archive.txt"
     if os.path.exists(filepath):
         asin_set = asin_loader()
@@ -324,7 +325,7 @@ if __name__ == "__main__":
 
     else:
         logging.info("Initializing scraper...")
-        response = requests_api(query = search_query, product=False, asin_code="", page = 3)
+        response = requests_api(query = search_query, product=False, asin_code="", page = 7)
 
         if response.status_code == 200:
             info = response.json()
