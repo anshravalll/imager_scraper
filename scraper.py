@@ -11,11 +11,11 @@ from collections import Counter
 load_dotenv()
 
 global extractor
-extractor = False 
+extractor = True 
 global counter
 counter = Counter()
 global search_query
-search_query ="Silk cehenga choli"
+search_query ="Handcrafted lehenga choli"
 
 def generate_uuid():
     return str(uuid.uuid4())
@@ -67,7 +67,7 @@ def extract_urls(info):
     counter["total_product_urls"] = len(products)
     product_url_list = []
     
-    with open("urls.txt", 'w') as file:
+    with open("urls.txt", 'a') as file:
         for product in products:
             product_url = product.get("optimized_url") 
             asin_code = product.get("asin")
@@ -77,6 +77,7 @@ def extract_urls(info):
                 file.write(product_url + '\n')
                 product_url_list.append((product_url, asin_code, product_uuid))
                 counter["extracted_product_urls"] += 1
+        file.write('\n')
     
     logging.debug(f"From the list of {counter["total_product_urls"]} urls, {counter['extracted_product_urls']} are extracted.")
     logging.info("url and asin code extraction completed.")
@@ -138,7 +139,10 @@ def create_product_directory(info):
         "Category": search_query,
         "Title": sanitize_folder_name(info.get("title"))
     }
-    product_path = os.path.join(*directory_structure.values(), "Images")
+
+    base_path = os.path.join(directory_structure["Source"], directory_structure["Section"])
+    category_path = os.path.join(base_path, directory_structure["Category"])
+    product_path = os.path.join(category_path, directory_structure["Title"], "Images")
     
     # Prepend \\?\ to handle long paths on Windows
     if os.name == 'nt':
@@ -238,14 +242,15 @@ def extract_images(product_url = [], product_json_directory = ""):
         if info.get("customization_options").get("color"): 
             continue
 
-        image_url_list = list(set(info.get("images")))
+        image_url_list = list(set(info.get("images", [])))
         counter["total_image_urls"] = len(image_url_list)
         image_folder_path = create_product_directory(info)
         counter["extracted_images"] = 0
     
         for idx, image in enumerate(image_url_list):
             image_name = f"{product_uuid}_{idx + 1}.jpg"
-            if not os.path.exists(f"{image_folder_path}/{image_name}"):
+            image_path = os.path.join(image_folder_path, image_name)
+            if not os.path.exists(image_path):
                 response = requests.get(image)
                 response.raise_for_status()
                 if response.status_code == 200:
@@ -258,7 +263,8 @@ def extract_images(product_url = [], product_json_directory = ""):
 
             else:
                counter["existing_images"] += 1
-                
+               logging.debug(f"Image already exists: {image_path}") 
+
         logging.debug(f"{counter['extracted_images']}/{counter["total_image_urls"]} images are extracted for {index + 1}/{len(products)} products at path: {image_folder_path}")
         logging.debug(f"Total extracted image count is: {counter["total_extracted_images"]} with existing image count of: {counter["existing_images"]}")
 
@@ -310,36 +316,86 @@ def logger_setup():
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("requests").setLevel(logging.WARNING)
 
-if __name__ == "__main__":
-    """Main execution block to fetch search results and extract images."""
-    logger_setup()
+def scrape_full_search(page = 0):
+    if page == 0:
+        counter["page"] = 1
 
-    if extractor == True:
-        logging.info("Initializing extractor")
-        try:
-            extract_images(product_json_directory= "products_info/Indian lehenga")
-        except requests.exceptions.HTTPError as err:
-            print(f"Error occurred: {err}")
-            logging.exception("View the stack trace below to catch the issue.")
-        logging.info("Stopping extractor")
+        while counter["page"] != 8:
+            logging.info(f"page: {counter['page']}")
+            print(f"page: {counter['page']}")
+    
+            logging.info("Initializing scraper...")
+            response = requests_api(query=search_query, product=False, asin_code="", page= counter["page"])
+
+            if response.status_code == 200:
+                info = response.json()
+                with open("page.json", "a") as file:
+                    json.dump(info, file, indent=4)
+                    file.write("\n")
+                print("Search response received.")
+            
+                try:
+                    product_url = extract_urls(info)
+                    extract_images(product_url)
+                except requests.exceptions.HTTPError as err:
+                    print(f"Error occurred: {err}")
+                    logging.exception("View the stack trace below to catch the issue.")
+                    return
+
+            else:
+                print(f"Request failed with status code: {response.status_code}")
+                return
+            counter["page"] += 1
+    
+            for key in list(counter.keys()):
+                if key == "page":
+                    continue
+                counter[key] = 0
 
     else:
+        counter["page"] = page
+        logging.info(f"page: {counter['page']}")
+        print(f"page: {counter['page']}")
+    
         logging.info("Initializing scraper...")
-        response = requests_api(query = search_query, product=False, asin_code="", page = 7)
+        response = requests_api(query=search_query, product=False, asin_code="", page= counter["page"])
 
         if response.status_code == 200:
             info = response.json()
             with open("page.json", "a") as file:
                 json.dump(info, file, indent=4)
+                file.write("\n")
             print("Search response received.")
-        
+            
             try:
                 product_url = extract_urls(info)
                 extract_images(product_url)
             except requests.exceptions.HTTPError as err:
                 print(f"Error occurred: {err}")
                 logging.exception("View the stack trace below to catch the issue.")
+                return
+
         else:
             print(f"Request failed with status code: {response.status_code}")
+            return
 
-        logging.info("Stopping scraper execution.")
+    logging.info("Stopping scraper execution.")
+    logging.info("\n")
+    print("")
+
+def full_extraction():
+    logging.info("Initializing extractor")
+    try:
+        extract_images(product_json_directory=f"products_info/{search_query}")
+    except requests.exceptions.HTTPError as err:
+        print(f"Error occurred: {err}")
+        logging.exception("View the stack trace below to catch the issue.")
+    logging.info("Stopping extractor")
+
+if __name__ == "__main__":
+    """Main execution block to fetch search results and extract images."""
+    logger_setup()
+    if extractor:
+        full_extraction()
+    else:
+        scrape_full_search()
