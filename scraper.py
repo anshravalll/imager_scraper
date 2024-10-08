@@ -11,11 +11,11 @@ from collections import Counter
 load_dotenv()
 
 global extractor
-extractor = True 
+extractor = False 
 global counter
 counter = Counter()
 global search_query
-search_query ="Handcrafted lehenga choli"
+search_query ="Organza lehenga choli"
 
 def generate_uuid():
     return str(uuid.uuid4())
@@ -318,7 +318,7 @@ def logger_setup():
 
 def scrape_full_search(page = 0):
     if page == 0:
-        counter["page"] = 1
+        counter["page"] = 4
 
         while counter["page"] != 8:
             logging.info(f"page: {counter['page']}")
@@ -340,11 +340,14 @@ def scrape_full_search(page = 0):
                 except requests.exceptions.HTTPError as err:
                     print(f"Error occurred: {err}")
                     logging.exception("View the stack trace below to catch the issue.")
-                    return
+                    logging.info("Trying again")
+                    continue
 
             else:
                 print(f"Request failed with status code: {response.status_code}")
-                return
+                logging.info("Trying again")
+                continue
+
             counter["page"] += 1
     
             for key in list(counter.keys()):
