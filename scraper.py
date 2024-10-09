@@ -54,7 +54,7 @@ def asin_handler(asin):
             return False
 
     else:
-        with open(filepath, "a") as file:
+        with open(filepath, "a"):
             pass
         append_asin(asin, filepath)
         return True
