@@ -11,11 +11,11 @@ from collections import Counter
 load_dotenv()
 
 global extractor
-extractor = False 
+extractor = True  
 global counter
 counter = Counter()
 global search_query
-search_query ="Organza lehenga choli"
+search_query ="Indian lehenga"
 
 def generate_uuid():
     return str(uuid.uuid4())

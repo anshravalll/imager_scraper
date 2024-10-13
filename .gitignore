@@ -6,3 +6,4 @@
 !.gitignore
 !requirements.txt
 !utils.py
+!gradio_app.py
