@@ -4,4 +4,5 @@ requests
 json
 gradio==3.32.0
 setuptools
+Pillow
 
