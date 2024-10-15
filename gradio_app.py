@@ -1,60 +1,81 @@
-import os
 import gradio as gr
-from PIL import Image
+import os
 
-# Directory containing images
-IMAGE_DIR = "C:/Users/Ansh/Desktop/coding/image_scraper/Amazon/Women/Rajasthani Lehenga Choli/Beatitude Multicolor Handwoven Kosa Silk Digital Print Designer Saree for Women Gifts Indian Saree Blouse/Images"
+# Define the base directory structure
+BASE_DIR = "Amazon\Women"
 
-# Get list of images in the directory
-def get_image_list(directory):
-    return [os.path.join(directory, f) for f in os.listdir(directory) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+# Global variables to keep track of the current state
+current_keyword_index = 0
+current_title_index = 0
+image_dir = None
+keywords = []
+titles = []
 
-# Load image for display
-def load_image(image_path):
-    return Image.open(image_path)
+# Helper function to load keywords and titles (directories)
+def load_directory_structure():
+    global keywords, titles
+    keywords = [f for f in os.listdir(BASE_DIR) if os.path.isdir(os.path.join(BASE_DIR, f))]
+    if keywords:
+        load_titles_for_keyword()
 
-# Delete image
+# Helper function to load titles under the current keyword
+def load_titles_for_keyword():
+    global titles, current_keyword_index
+    keyword_dir = os.path.join(BASE_DIR, keywords[current_keyword_index])
+    titles = [f for f in os.listdir(keyword_dir) if os.path.isdir(os.path.join(keyword_dir, f))]
+
+# Load images from the current "Images" folder
+def load_images():
+    global current_title_index, image_dir
+    if titles:
+        title_dir = os.path.join(BASE_DIR, keywords[current_keyword_index], titles[current_title_index], "Images")
+        image_dir = title_dir
+        image_files = [os.path.join(title_dir, img) for img in os.listdir(title_dir) if img.endswith(('.jpg', '.jpeg', '.png'))]
+        return image_files
+    return []
+
+# Function to delete a selected image
 def delete_image(image_path):
-    try:
+    if os.path.exists(image_path):
         os.remove(image_path)
-        return f"{os.path.basename(image_path)} has been deleted."
-    except Exception as e:
-        return f"Error deleting {os.path.basename(image_path)}: {e}"
+    return load_images()  # Return the updated list of images after deletion
 
-# Display images with thumbnails
-def display_images(image_list):
-    return image_list  # Return list of image paths for Gradio to handle
+# Function to move to the next product (next title directory)
+def next_product():
+    global current_title_index, current_keyword_index
+    current_title_index += 1
+    if current_title_index >= len(titles):
+        current_title_index = 0
+        current_keyword_index += 1
+        if current_keyword_index >= len(keywords):
+            current_keyword_index = 0  # Loop back to the first keyword if all are done
+        load_titles_for_keyword()
+    return load_images()
 
-# Function to handle image deletion
-def delete_and_refresh(selected_image, image_list):
-    delete_message = delete_image(selected_image)
-    updated_image_list = get_image_list(IMAGE_DIR)
-    return updated_image_list, delete_message
+# Initialize the directory structure on launch
+load_directory_structure()
 
-# Create the Gradio Interface
-def main():
-    image_list = get_image_list(IMAGE_DIR)
-    with gr.Blocks() as app:
-        gr.Markdown("# Data Labeling Interface")
-        gallery = gr.Gallery(label="Image Gallery", show_label=False).style(grid=2)  # Change grid for layout
-        delete_button = gr.Button("Delete Selected Image")
-        status_message = gr.Textbox(label="Status", interactive=False)
+# Blocks context to create the Gradio app
+with gr.Blocks() as app:
+    # Display images
+    image_gallery = gr.Gallery(label="Product Images", columns=3).style()  # Use columns instead of grid
+    image_gallery.update(load_images())  # Load initial images
 
-        # Load images into gallery
-        gallery.update(value=image_list)
+    # Button to delete the currently selected image
+    delete_button = gr.Button("Delete Selected Image")
+    image_selector = gr.Image(type="filepath", label="Select Image")  # Selector for image to delete
 
-        # Define actions when an image is selected
-        def update_on_selection(selected_image):
-            if selected_image:
-                delete_status = delete_and_refresh(selected_image, image_list)
-                status_message.update(delete_status[1])
-                gallery.update(value=delete_status[0])
-            return status_message
+    # Update the image selector when an image is clicked in the gallery
+    def select_image(image):
+        return image  # Set the image path for the selector
 
-        gallery.select(update_on_selection)
-        delete_button.click(delete_and_refresh, inputs=gallery, outputs=[gallery, status_message])
+    image_gallery.select(select_image, outputs=image_selector)
 
-    app.launch()
+    delete_button.click(delete_image, inputs=image_selector, outputs=image_gallery)
 
-if __name__ == "__main__":
-    main()
+    # Button to move to the next product
+    next_button = gr.Button("Next Product")
+    next_button.click(next_product, inputs=None, outputs=image_gallery)
+
+# Launch the Gradio app
+app.launch()
