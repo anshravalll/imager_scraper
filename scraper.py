@@ -4,6 +4,7 @@ import os
 import re
 import uuid
 import logging
+import sys
 from dotenv import load_dotenv
 from collections import Counter
 
@@ -11,11 +12,11 @@ from collections import Counter
 load_dotenv()
 
 global extractor
-extractor = True  
+extractor = False  
 global counter
 counter = Counter()
 global search_query
-search_query ="Indian lehenga"
+search_query = sys.argv[1]
 
 def generate_uuid():
     return str(uuid.uuid4())
@@ -318,7 +319,7 @@ def logger_setup():
 
 def scrape_full_search(page = 0):
     if page == 0:
-        counter["page"] = 4
+        counter["page"] = 1
 
         while counter["page"] != 8:
             logging.info(f"page: {counter['page']}")
