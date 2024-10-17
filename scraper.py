@@ -12,7 +12,7 @@ from collections import Counter
 load_dotenv()
 
 global extractor
-extractor = False  
+extractor = False 
 global counter
 counter = Counter()
 global search_query
@@ -399,6 +399,7 @@ def full_extraction():
 if __name__ == "__main__":
     """Main execution block to fetch search results and extract images."""
     logger_setup()
+    print(f"For search query: {search_query}")
     if extractor:
         full_extraction()
     else:
