@@ -28,13 +28,14 @@ from datetime import datetime
 #
 #     print(f"Total items removed from folder '{keyword_folders[keyword_folder]}': {count}\n")
 
+
 #Total number of collected product details
 
-BASE_DIR = "products_info"
+BASE_DIR = "Amazon/Women"
 total_items = 0
 
 # Define the threshold date (the 16th of the current month)
-threshold_day = 16
+threshold_day = 18
 current_year = datetime.now().year
 current_month = datetime.now().month
 
@@ -46,7 +47,7 @@ for each_keywrod in os.listdir(BASE_DIR):
         mod_date = datetime.fromtimestamp(mod_time)  # Convert timestamp to datetime
         
         # Check if the modification date is on or after the 16th of the current month
-        if mod_date.year == current_year and mod_date.month <= current_month and mod_date.day >= threshold_day:
+        if mod_date.year == current_year and mod_date.month <= current_month and mod_date.day <= threshold_day:
             # Count the items in the directory
             total_items += len(os.listdir(full_path))
 
