@@ -11,13 +11,19 @@ from collections import Counter
 # Load environment variables from .env file
 load_dotenv()
 
-global extractor
-customizable = False
-extractor = True 
-global counter
-counter = Counter()
 global search_query
 search_query = sys.argv[1]
+
+global extractor
+extractor_prompt = input("Continue with scraping functionality or not (extraction functionality)? (y/n)")
+extractor = False if extractor_prompt.lower() == "y" else True
+
+global customizable
+customizable_opt_prompt = input("Allowing customization options containing products? (y/n)")
+customizable = True if customizable_opt_prompt.lower() == "y" else False
+
+global counter
+counter = Counter()
 
 def generate_uuid():
     return str(uuid.uuid4())
