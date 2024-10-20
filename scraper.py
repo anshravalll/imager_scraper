@@ -12,6 +12,7 @@ from collections import Counter
 load_dotenv()
 
 global extractor
+customizable = False
 extractor = True 
 global counter
 counter = Counter()
@@ -137,13 +138,13 @@ def create_product_directory(info):
     directory_structure = {
         "Source": "Amazon",
         "Section": "Women",
-        "Category": search_query,
+        "Keyword": search_query,
         "Title": sanitize_folder_name(info.get("title"))
     }
 
     base_path = os.path.join(directory_structure["Source"], directory_structure["Section"])
-    category_path = os.path.join(base_path, directory_structure["Category"])
-    product_path = os.path.join(category_path, directory_structure["Title"], "Images")
+    keyword_path = os.path.join(base_path, directory_structure["Keyword"])
+    product_path = os.path.join(keyword_path, "Customizable", directory_structure["Title"], "Images") if customizable is True else os.path.join(keyword_path, directory_structure["Title"], "Images")
     
     # Prepend \\?\ to handle long paths on Windows
     if os.name == 'nt':
@@ -240,8 +241,8 @@ def extract_images(product_url = [], product_json_directory = ""):
         info, product_uuid = product[0], product[1]
 
         #Skip the info which contains multiple nested products through customization options
-        if info.get("customization_options").get("color"): 
-            continue
+        if info.get("customization_options").get("color") and not customizable: 
+            continue 
 
         image_url_list = list(set(info.get("images", [])))
         counter["total_image_urls"] = len(image_url_list)
