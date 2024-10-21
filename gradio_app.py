@@ -118,6 +118,25 @@ def restore_images(selected_trash_images):
         updated_image_checkboxes  # Update Checkboxes in the main directory
     )
 
+# Function to delete files other than the selected ones
+def delete_unselected(selected_images):
+    global current_images
+    # Get the list of image names that should NOT be deleted
+    selected_image_names = set(selected_images) if selected_images else set()
+    
+    for img_path in current_images:
+        img_name = os.path.basename(img_path)
+        if img_name not in selected_image_names:
+            if os.path.exists(img_path):
+                trash_path = os.path.join(TRASH_DIR, img_name)
+                shutil.move(img_path, trash_path)
+                print(f"Moved to Trash (unselected): {img_path}")
+    
+    # Reload the images and update the gallery and checkboxes
+    updated_image_files = load_images()
+    updated_image_names = [os.path.basename(img) for img in updated_image_files]
+    return updated_image_files, gr.update(choices=updated_image_names, value=[])
+
 # Initialize the directory structure by loading keywords
 load_keywords()
 load_titles()  # Load titles for the first keyword
@@ -138,6 +157,9 @@ with gr.Blocks() as app:
 
     # Delete button to move selected images to Trash
     delete_button = gr.Button("Move to Trash")
+
+    # New button to delete unselected images
+    delete_unselected_button = gr.Button("Delete Unselected Images")
 
     # Trash section to restore deleted images
     trash_checkboxes = gr.CheckboxGroup(choices=load_trash(), label="Trash", interactive=True)
@@ -160,6 +182,13 @@ with gr.Blocks() as app:
     # Move selected images to Trash when delete button is clicked
     delete_button.click(
         fn=move_to_trash, 
+        inputs=[image_checkboxes], 
+        outputs=[image_gallery, image_checkboxes]
+    )
+
+    # Delete unselected images when delete_unselected_button is clicked
+    delete_unselected_button.click(
+        fn=delete_unselected, 
         inputs=[image_checkboxes], 
         outputs=[image_gallery, image_checkboxes]
     )
