@@ -19,8 +19,11 @@ extractor_prompt = input("Continue with scraping functionality or not (extractio
 extractor = False if extractor_prompt.lower() == "y" else True
 
 global customizable
-customizable_opt_prompt = input("Allowing customization options containing products? (y/n)")
-customizable = True if customizable_opt_prompt.lower() == "y" else False
+if extractor is True:
+    customizable_opt_prompt = input("Allowing customization options containing products? (y/n)") 
+    customizable = True if customizable_opt_prompt.lower() == "y" else False
+else:
+    customizable = True
 
 global counter
 counter = Counter()
