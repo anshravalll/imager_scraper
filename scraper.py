@@ -11,6 +11,7 @@ from collections import Counter
 # Load environment variables from .env file
 load_dotenv()
 
+#Terminal prompts and required options for scraping/extraction to begin
 global search_query
 search_query = sys.argv[1]
 
