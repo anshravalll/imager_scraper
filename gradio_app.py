@@ -63,8 +63,8 @@ def update_gallery(selected_title):
 def move_to_trash(selected_images):
     global current_images
     if selected_images:
-        for img_name in list(map(extract_uuid, selected_images)):
-            img_path = next((img for img in current_images if os.path.splitext(os.path.basename(img))[0] == img_name), None)
+        for img_name in list(map(lambda x: extract_uuid(x, only_uuid=False), selected_images)):
+            img_path = next((img for img in current_images if extract_uuid(os.path.basename(img), only_uuid=False) == img_name), None)
             if img_path and os.path.exists(img_path):
                 trash_path = os.path.join(TRASH_DIR, os.path.basename(img_path))
                 shutil.move(img_path, trash_path)
@@ -111,12 +111,12 @@ def extract_uuid(image_name, only_uuid=False):
 # Function to restore selected images from Trash to the original folder
 def restore_images(selected_trash_images):
     # Get UUID prefixes from currently displayed images
-    current_image_uuids = {extract_uuid(os.path.basename(img), only_uuid = True) for img in current_images if extract_uuid(os.path.basename(img), only_uuid= True)}
-    
+    current_image_uuids = {extract_uuid(os.path.basename(img), only_uuid=True) for img in current_images if extract_uuid(os.path.basename(img), only_uuid=True)}
+
     if selected_trash_images:
         for img_name in selected_trash_images:
             trash_path = os.path.join(TRASH_DIR, img_name)
-            img_uuid = extract_uuid(img_name, only_uuid= True)
+            img_uuid = extract_uuid(img_name, only_uuid=True)
             
             # Only restore if the image's UUID matches those in the current folder
             if img_uuid in current_image_uuids and os.path.exists(trash_path):
@@ -130,7 +130,7 @@ def restore_images(selected_trash_images):
     # Refresh Trash and current images
     updated_trash_choices = load_trash()
     updated_image_files, updated_image_checkboxes = update_gallery(titles[current_title_index])
-    
+
     return (
         gr.update(choices=updated_trash_choices, value=[]),  # Clear selected items in Trash
         updated_image_files,  # Update Gallery
@@ -140,9 +140,19 @@ def restore_images(selected_trash_images):
 # Function to delete files other than the selected ones
 def delete_unselected(selected_images):
     global current_images
-    # Get the list of image names that should NOT be deleted
-    selected_image_names = set(selected_images) if selected_images else set()
-    
+    # Extract normalized names from selected images
+    selected_image_names = set()
+    if selected_images:
+        for img in selected_images:
+            # Extract the UUID with suffix (to match the image names in current_images)
+            img_name = extract_uuid(img, only_uuid=False)
+            # Add the file extension back if necessary
+            if img_name:
+                # Find the full filename in current_images
+                matching_img = next((os.path.basename(img_path) for img_path in current_images if extract_uuid(os.path.basename(img_path), only_uuid=False) == img_name), None)
+                if matching_img:
+                    selected_image_names.add(matching_img)
+
     for img_path in current_images:
         img_name = os.path.basename(img_path)
         if img_name not in selected_image_names:
@@ -150,11 +160,69 @@ def delete_unselected(selected_images):
                 trash_path = os.path.join(TRASH_DIR, img_name)
                 shutil.move(img_path, trash_path)
                 print(f"Moved to Trash (unselected): {img_path}")
-    
+
     # Reload the images and update the gallery and checkboxes
     updated_image_files = load_images()
-    updated_image_names = [os.path.basename(img) for img in updated_image_files]
+    updated_image_names = [f"{os.path.basename(img)} ({index+1})" for index, img in enumerate(updated_image_files)]
     return updated_image_files, gr.update(choices=updated_image_names, value=[])
+
+# Function to move to the next title and keyword
+def next_title():
+    global current_keyword_index, current_title_index, keywords, titles
+
+    # Increment the title index
+    current_title_index += 1
+
+    # Check if we need to move to the next keyword
+    if current_title_index >= len(titles):
+        current_title_index = 0  # Reset title index
+        current_keyword_index += 1  # Move to next keyword
+
+        # Loop back to the first keyword if we've reached the end
+        if current_keyword_index >= len(keywords):
+            current_keyword_index = 0
+
+        # Load new titles for the new keyword
+        load_titles()
+
+    # Update the dropdowns and galleries
+    selected_keyword = keywords[current_keyword_index]
+    selected_title = titles[current_title_index]
+
+    # Update the keyword and title dropdowns
+    keyword_update = gr.update(value=selected_keyword)
+    title_update = gr.update(choices=titles, value=selected_title)
+
+    # Update the gallery and checkboxes
+    image_files = load_images()
+    image_names = [os.path.basename(img) for img in image_files]
+    numbered_image_names = [f"{name} ({index+1})" for index, name in enumerate(image_names)]
+
+    return keyword_update, title_update, image_files, gr.update(choices=numbered_image_names, value=[])
+
+# Function to select all images
+def select_all_images():
+    # Get all current image names with indices
+    image_names = [f"{os.path.basename(img)} ({index+1})" for index, img in enumerate(current_images)]
+    # Return an update for the checkbox group to select all images
+    return gr.update(value=image_names)
+
+# Function to deselect all images
+def deselect_all_images():
+    # Return an update for the checkbox group to deselect all images
+    return gr.update(value=[])
+
+# Function to select all items in Trash
+def select_all_trash():
+    # Get all current trash image names
+    trash_image_names = load_trash()
+    # Return an update for the trash checkbox group to select all images
+    return gr.update(value=trash_image_names)
+
+# Function to deselect all items in Trash
+def deselect_all_trash():
+    # Return an update for the trash checkbox group to deselect all images
+    return gr.update(value=[])
 
 # Initialize the directory structure by loading keywords
 load_keywords()
@@ -165,14 +233,20 @@ with gr.Blocks() as app:
     keyword_dropdown = gr.Dropdown(choices=keywords, label="Select Keyword", value=keywords[0])
 
     # Dropdown for selecting title (initially populated with first keyword's titles)
-    title_dropdown = gr.Dropdown(choices=titles, label="Select Title", interactive=True)
+    title_dropdown = gr.Dropdown(choices=titles, label="Select Title", interactive=True, value=titles[0] if titles else None)
 
     with gr.Row():
         # Gallery for displaying images
         image_gallery = gr.Gallery(label="Product Images", show_label=True, interactive=True)
 
-        # Multi-select component for image names
-        image_checkboxes = gr.CheckboxGroup(choices=[], label="Image with Names", interactive=True)
+        # Column for checkboxes and buttons
+        with gr.Column():
+            # Multi-select component for image names
+            image_checkboxes = gr.CheckboxGroup(choices=[], label="Image with Names", interactive=True)
+
+            # Add the Select All and Deselect All buttons for main images
+            select_all_button = gr.Button("Select All")
+            deselect_all_button = gr.Button("Deselect All")
 
     # Delete button to move selected images to Trash
     delete_button = gr.Button("Move to Trash")
@@ -180,8 +254,17 @@ with gr.Blocks() as app:
     # New button to delete unselected images
     delete_unselected_button = gr.Button("Delete Unselected Images")
 
+    # Add the Next button
+    next_button = gr.Button("Next")
+
     # Trash section to restore deleted images
     trash_checkboxes = gr.CheckboxGroup(choices=load_trash(), label="Trash", interactive=True)
+
+    # Add Select All and Deselect All buttons for Trash
+    select_all_trash_button = gr.Button("Select All Trash")
+    deselect_all_trash_button = gr.Button("Deselect All Trash")
+
+    # Restore button to restore selected images from Trash
     restore_button = gr.Button("Restore Selected from Trash")
 
     # Update titles when keyword is selected
@@ -217,6 +300,41 @@ with gr.Blocks() as app:
         fn=restore_images, 
         inputs=[trash_checkboxes], 
         outputs=[trash_checkboxes, image_gallery, image_checkboxes]
+    )
+
+    # Bind the Next button to the next_title function
+    next_button.click(
+        fn=next_title,
+        inputs=[],
+        outputs=[keyword_dropdown, title_dropdown, image_gallery, image_checkboxes]
+    )
+
+    # Bind the Select All button to the select_all_images function
+    select_all_button.click(
+        fn=select_all_images,
+        inputs=[],
+        outputs=image_checkboxes
+    )
+
+    # Bind the Deselect All button to the deselect_all_images function
+    deselect_all_button.click(
+        fn=deselect_all_images,
+        inputs=[],
+        outputs=image_checkboxes
+    )
+
+    # Bind the Select All Trash button to the select_all_trash function
+    select_all_trash_button.click(
+        fn=select_all_trash,
+        inputs=[],
+        outputs=trash_checkboxes
+    )
+
+    # Bind the Deselect All Trash button to the deselect_all_trash function
+    deselect_all_trash_button.click(
+        fn=deselect_all_trash,
+        inputs=[],
+        outputs=trash_checkboxes
     )
 
 # Launch the Gradio app
