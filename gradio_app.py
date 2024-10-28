@@ -63,8 +63,8 @@ def update_gallery(selected_title):
 def move_to_trash(selected_images):
     global current_images
     if selected_images:
-        for img_name in selected_images:
-            img_path = next((img for img in current_images if os.path.basename(img) == img_name), None)
+        for img_name in list(map(extract_uuid, selected_images)):
+            img_path = next((img for img in current_images if os.path.splitext(os.path.basename(img))[0] == img_name), None)
             if img_path and os.path.exists(img_path):
                 trash_path = os.path.join(TRASH_DIR, os.path.basename(img_path))
                 shutil.move(img_path, trash_path)
@@ -72,10 +72,10 @@ def move_to_trash(selected_images):
         
         # Reload the images and update the gallery and checkboxes
         updated_image_files = load_images()
-        updated_image_names = [os.path.basename(img) for img in updated_image_files]
+        updated_image_names = [f"{os.path.basename(img)} ({index+1})" for index, img in enumerate(updated_image_files)]
         return updated_image_files, gr.update(choices=updated_image_names, value=[])
 
-    return current_images, gr.update(choices=[os.path.basename(img) for img in current_images])
+    return current_images, gr.update(choices=[f"{os.path.basename(img)} ({index+1})" for index, img in enumerate(current_images)])
 
 # Function to load images from Trash
 def load_trash():
@@ -83,21 +83,40 @@ def load_trash():
     return [os.path.basename(img) for img in trash_images]
 
 # Function to extract UUID prefix from a given image name
-def extract_uuid(image_name):
-    match = re.match(r"([a-f0-9\-]+)_\d+", image_name)
-    if match:
-        return match.group(1)
+def extract_uuid(image_name, only_uuid=False):
+    """
+    Extracts the UUID prefix from a given image name.
+    
+    Parameters:
+        image_name (str): The name of the image file.
+        only_uuid (bool): If True, extract only the UUID without the suffix.
+                          If False, extract the UUID with the suffix.
+    
+    Returns:
+        str: The extracted UUID or UUID with suffix, or None if no match.
+    """
+    if only_uuid:
+        # Pattern to capture only the UUID part without the suffix
+        match = re.match(r"([a-f0-9\-]+)(?:_\d+)?(?:\.(?:jpg|jpeg|png))?(?: \(\d+\))?$", image_name)
+        if match:
+            return match.group(1)  # Returns only the UUID
+    else:
+        # Pattern to capture UUID with suffix (_1, _2, etc.)
+        match = re.match(r"([a-f0-9\-]+_\d+)(?:\.(?:jpg|jpeg|png))?(?: \(\d+\))?$", image_name)
+        if match:
+            return match.group(1)  # Returns UUID with suffix attached
+    
     return None
 
 # Function to restore selected images from Trash to the original folder
 def restore_images(selected_trash_images):
     # Get UUID prefixes from currently displayed images
-    current_image_uuids = {extract_uuid(os.path.basename(img)) for img in current_images if extract_uuid(os.path.basename(img))}
+    current_image_uuids = {extract_uuid(os.path.basename(img), only_uuid = True) for img in current_images if extract_uuid(os.path.basename(img), only_uuid= True)}
     
     if selected_trash_images:
         for img_name in selected_trash_images:
             trash_path = os.path.join(TRASH_DIR, img_name)
-            img_uuid = extract_uuid(img_name)
+            img_uuid = extract_uuid(img_name, only_uuid= True)
             
             # Only restore if the image's UUID matches those in the current folder
             if img_uuid in current_image_uuids and os.path.exists(trash_path):
