@@ -248,11 +248,12 @@ with gr.Blocks() as app:
             select_all_button = gr.Button("Select All")
             deselect_all_button = gr.Button("Deselect All")
 
+            # New button to delete unselected images
+            delete_unselected_button = gr.Button("Delete Unselected Images")
+
+
     # Delete button to move selected images to Trash
     delete_button = gr.Button("Move to Trash")
-
-    # New button to delete unselected images
-    delete_unselected_button = gr.Button("Delete Unselected Images")
 
     # Add the Next button
     next_button = gr.Button("Next")
