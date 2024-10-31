@@ -5,11 +5,7 @@ import re
 
 # Define the base directory structure
 BASE_DIR = "Amazon/Women"
-TRASH_DIR = "Amazon/Women/Trash"  # Define a folder for deleted images
-
-# Ensure the Trash directory exists
-if not os.path.exists(TRASH_DIR):
-    os.makedirs(TRASH_DIR)
+TRASH_DIR = {}
 
 # Global variables to keep track of the current state
 current_keyword_index = 0
@@ -17,6 +13,25 @@ current_title_index = 0
 keywords = []
 titles = []
 current_images = []  # This will hold the currently displayed images
+
+def update_trash(request: gr.Request):  
+    username = str(request.username)
+    
+    # Define the user's specific trash directory path
+    user_trash_dir = os.path.join(username, BASE_DIR)
+    
+    # Ensure the Trash directory exists for the user
+    if not os.path.exists(user_trash_dir):
+        os.makedirs(user_trash_dir, exist_ok=True)
+    
+    # Store the path in the global dictionary
+    TRASH_DIR[username] = user_trash_dir
+     
+def authenticate(username, password):
+    user_pass_dict = {
+        "ansh": "ansh"
+    }
+    return user_pass_dict.get(username, False) and user_pass_dict.get(password, False)
 
 # Helper function to load keywords (main directories)
 def load_keywords():
@@ -337,6 +352,8 @@ with gr.Blocks() as app:
         inputs=[],
         outputs=trash_checkboxes
     )
+    
+    gr.load(update_trash)
 
 # Launch the Gradio app
-app.launch()
+app.launch(auth = authenticate)
