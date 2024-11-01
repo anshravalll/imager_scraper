@@ -146,9 +146,6 @@ def gallery_select_deselect(selected_images, evt: gr.SelectData, request: gr.Req
     # Update the gallery with the new selection
     return gr.Gallery(selected_index= None), gr.update(value=selected_images)
 
-
-
-
 # Function to create the Trash path with the same structure as BASE_DIR
 def create_trash_path(username, keyword, title):
     # Define path in Trash that mirrors the original directory structure
@@ -386,122 +383,130 @@ load_keywords("ansh")
 load_titles("ansh")  # Load titles based on the current keyword of "ansh"oad_titles()  # Load titles for the first keyword
 
 with gr.Blocks() as app:
-    app.load(on_load)
-    # Dropdown for selecting keyword
-    keyword_dropdown = gr.Dropdown(choices=USER_STATE["ansh"]["keywords"], label="Select Keyword", value=USER_STATE["ansh"]["keywords"][0])
+    # First Tab: Image Workspace
+    with gr.Tab("Image Workspace"):
+        # Load event for setting up initial state
+        app.load(on_load)
 
-    # Dropdown for selecting title (initially populated with first keyword's titles)
-    title_dropdown = gr.Dropdown(choices=USER_STATE["ansh"]["titles"], label="Select Title", interactive=True, value=USER_STATE["ansh"]["titles"][0] if USER_STATE["ansh"]["titles"] else None)
+        # Dropdown for selecting keyword
+        keyword_dropdown = gr.Dropdown(choices=USER_STATE["ansh"]["keywords"], label="Select Keyword", value=USER_STATE["ansh"]["keywords"][0])
 
-    with gr.Row():
-        # Gallery for displaying images
-        image_gallery = gr.Gallery(label="Product Images", show_label=True, interactive=True, allow_preview= False)
+        # Dropdown for selecting title (initially populated with first keyword's titles)
+        title_dropdown = gr.Dropdown(choices=USER_STATE["ansh"]["titles"], label="Select Title", interactive=True, value=USER_STATE["ansh"]["titles"][0] if USER_STATE["ansh"]["titles"] else None)
 
-        # Column for checkboxes and buttons
-        with gr.Column():
-            # Multi-select component for image names
-            image_checkboxes = gr.CheckboxGroup(choices=[], label="Image with Names", interactive=True)
+        with gr.Row():
+            # Gallery for displaying images
+            image_gallery = gr.Gallery(label="Product Images", show_label=True, interactive=True, allow_preview=False)
 
-            # Add the Select All and Deselect All buttons for main images
-            select_all_button = gr.Button("Select All")
-            deselect_all_button = gr.Button("Deselect All")
+            # Column for checkboxes and buttons
+            with gr.Column():
+                # Multi-select component for image names
+                image_checkboxes = gr.CheckboxGroup(choices=[], label="Image with Names", interactive=True)
 
-            # New button to delete unselected images
-            delete_unselected_button = gr.Button("Delete Unselected Images")
+                # Add the Select All and Deselect All buttons for main images
+                select_all_button = gr.Button("Select All")
+                deselect_all_button = gr.Button("Deselect All")
 
+                # New button to delete unselected images
+                keep_selected_only_button = gr.Button("Keep selected only")
 
-    # Delete button to move selected images to Trash
-    delete_button = gr.Button("Move to Trash")
+        # Delete button to move selected images to Trash
+        delete_button = gr.Button("Move to Trash")
 
-    # Add the Next button
-    next_button = gr.Button("Next")
+        # Add the Next button
+        next_button = gr.Button("Next")
 
-    # Trash section to restore deleted images
-    trash_checkboxes = gr.CheckboxGroup(choices=[], label="Trash", interactive=True)
+        # Trash section to restore deleted images
+        trash_checkboxes = gr.CheckboxGroup(choices=[], label="Trash", interactive=True)
 
-    # Add Select All and Deselect All buttons for Trash
-    select_all_trash_button = gr.Button("Select All Trash")
-    deselect_all_trash_button = gr.Button("Deselect All Trash")
+        # Add Select All and Deselect All buttons for Trash
+        select_all_trash_button = gr.Button("Select All Trash")
+        deselect_all_trash_button = gr.Button("Deselect All Trash")
 
-    # Restore button to restore selected images from Trash
-    restore_button = gr.Button("Restore Selected from Trash")
+        # Restore button to restore selected images from Trash
+        restore_button = gr.Button("Restore Selected from Trash")
 
-    # Update titles when keyword is selected
-    keyword_dropdown.change(
-        fn=update_titles, 
-        inputs=[keyword_dropdown], 
-        outputs=[title_dropdown]
-    )
+        # Update titles when keyword is selected
+        keyword_dropdown.change(
+            fn=update_titles,
+            inputs=[keyword_dropdown],
+            outputs=[title_dropdown]
+        )
 
-    # Update the gallery and checkbox group when a title is selected
-    title_dropdown.change(
-        fn=update_gallery, 
-        inputs=[title_dropdown], 
-        outputs=[image_gallery, image_checkboxes]
-    )
+        # Update the gallery and checkbox group when a title is selected
+        title_dropdown.change(
+            fn=update_gallery,
+            inputs=[title_dropdown],
+            outputs=[image_gallery, image_checkboxes]
+        )
 
-    # Move selected images to Trash when delete button is clicked
-    delete_button.click(
-        fn=move_to_trash, 
-        inputs=[image_checkboxes], 
-        outputs=[image_gallery, image_checkboxes]
-    )
+        # Move selected images to Trash when delete button is clicked
+        delete_button.click(
+            fn=move_to_trash,
+            inputs=[image_checkboxes],
+            outputs=[image_gallery, image_checkboxes]
+        )
 
-    # Delete unselected images when delete_unselected_button is clicked
-    delete_unselected_button.click(
-        fn=delete_unselected, 
-        inputs=[image_checkboxes], 
-        outputs=[image_gallery, image_checkboxes]
-    )
+        # Delete unselected images when delete_unselected_button is clicked
+        keep_selected_only_button.click(
+            fn=delete_unselected,
+            inputs=[image_checkboxes],
+            outputs=[image_gallery, image_checkboxes]
+        )
 
-    # Restore images from Trash when restore button is clicked
-    restore_button.click(
-        fn=restore_images, 
-        inputs=[trash_checkboxes], 
-        outputs=[trash_checkboxes, image_gallery, image_checkboxes]
-    )
+        # Restore images from Trash when restore button is clicked
+        restore_button.click(
+            fn=restore_images,
+            inputs=[trash_checkboxes],
+            outputs=[trash_checkboxes, image_gallery, image_checkboxes]
+        )
 
-    # Bind the Next button to the next_title function
-    next_button.click(
-        fn=next_title,
-        inputs=[],
-        outputs=[keyword_dropdown, title_dropdown, image_gallery, image_checkboxes]
-    )
+        # Bind the Next button to the next_title function
+        next_button.click(
+            fn=next_title,
+            inputs=[],
+            outputs=[keyword_dropdown, title_dropdown, image_gallery, image_checkboxes]
+        )
 
-    # Bind the Select All button to the select_all_images function
-    select_all_button.click(
-        fn=select_all_images,
-        inputs=[],
-        outputs=image_checkboxes
-    )
+        # Bind the Select All button to the select_all_images function
+        select_all_button.click(
+            fn=select_all_images,
+            inputs=[],
+            outputs=image_checkboxes
+        )
 
-    # Bind the Deselect All button to the deselect_all_images function
-    deselect_all_button.click(
-        fn=deselect_all_images,
-        inputs=[],
-        outputs=image_checkboxes
-    )
+        # Bind the Deselect All button to the deselect_all_images function
+        deselect_all_button.click(
+            fn=deselect_all_images,
+            inputs=[],
+            outputs=image_checkboxes
+        )
 
-    # Bind the Select All Trash button to the select_all_trash function
-    select_all_trash_button.click(
-        fn=select_all_trash,
-        inputs=[],
-        outputs=trash_checkboxes
-    )
+        # Bind the Select All Trash button to the select_all_trash function
+        select_all_trash_button.click(
+            fn=select_all_trash,
+            inputs=[],
+            outputs=trash_checkboxes
+        )
 
-    # Bind the Deselect All Trash button to the deselect_all_trash function
-    deselect_all_trash_button.click(
-        fn=deselect_all_trash,
-        inputs=[],
-        outputs=trash_checkboxes
-    )
+        # Bind the Deselect All Trash button to the deselect_all_trash function
+        deselect_all_trash_button.click(
+            fn=deselect_all_trash,
+            inputs=[],
+            outputs=trash_checkboxes
+        )
 
-    image_gallery.select(
-        fn = gallery_select_deselect,
-        inputs = [image_checkboxes],
-        outputs = [image_gallery, image_checkboxes]
-    )
+        image_gallery.select(
+            fn=gallery_select_deselect,
+            inputs=[image_checkboxes],
+            outputs=[image_gallery, image_checkboxes]
+        )
+
+    # Second Tab: Leaderboard
+    with gr.Tab("Leaderboard"):
+        # Placeholder for leaderboard content
+        gr.Markdown("### Leaderboard Data")
+        # You can add further components for the leaderboard, such as tables or charts
     
-
 # Launch the Gradio app
 app.launch(auth = authenticate)
