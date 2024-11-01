@@ -2,8 +2,7 @@ import gradio as gr
 import os
 import shutil
 import re
-
-from gradio.components import gallery
+from datetime import datetime, timedelta
 
 # Define the base directory structure
 BASE_DIR = "Amazon/Women"
@@ -14,7 +13,9 @@ USER_STATE = {
         "current_title_index": 0,
         "keywords": [],  # To be populated with actual keywords
         "titles": [],    # Titles will load based on the current keyword
-        "current_images": []
+        "current_images": [],
+        "start_datetime": None,
+        "end_datetime": None
     }
 }
 
@@ -26,7 +27,9 @@ def on_load(request: gr.Request):
             "current_title_index": 0,
             "keywords": [],
             "titles": [],
-            "current_images": []
+            "current_images": [],
+            "start_datetime": None,
+            "end_datetime": None
         }
     update_trash(username)
     load_keywords(username)
@@ -379,6 +382,42 @@ def deselect_all_trash():
     # Return an update for the trash checkbox group to deselect all images
     return gr.update(value=[])
 
+def datetime_changer(request: gr.Request, evt: gr.SelectData):
+    username = str(request.username)
+    user_state = USER_STATE[username]
+    current_time = datetime.now()
+    user_state["end_datetime"] = current_time
+
+    if str(evt.value) == "Till now":
+        default_time = datetime(2024, 11, 1)
+        user_state["start_datetime"] = default_time
+
+    elif str(evt.value) == "30m":
+        default_time = current_time - timedelta(minutes= 30) 
+        user_state["start_datetime"] = default_time 
+
+    elif str(evt.value) == "1h":
+        default_time = current_time - timedelta(hours = 1) 
+        user_state["start_datetime"] = default_time 
+
+    elif str(evt.value) == "2h":
+        default_time = current_time - timedelta(hours = 2) 
+        user_state["start_datetime"] = default_time 
+
+    elif str(evt.value) == "4h":
+        default_time = current_time - timedelta(hours = 4) 
+        user_state["start_datetime"] = default_time 
+        
+    elif str(evt.value) == "1d":
+        default_time = current_time - timedelta(days = 1) 
+        user_state["start_datetime"] = default_time 
+
+    elif str(evt.value) == "1w":
+        default_time = current_time - timedelta(days = 7)
+        user_state["start_datetime"] = default_time
+
+    return user_state["start_datetime"].strftime("%Y-%m-%d %H:%M:%S"), user_state["end_datetime"].strftime("%Y-%m-%d %H:%M:%S")
+
 load_keywords("ansh")
 load_titles("ansh")  # Load titles based on the current keyword of "ansh"oad_titles()  # Load titles for the first keyword
 
@@ -505,8 +544,28 @@ with gr.Blocks() as app:
     # Second Tab: Leaderboard
     with gr.Tab("Leaderboard"):
         # Placeholder for leaderboard content
-        gr.Markdown("### Leaderboard Data")
-        # You can add further components for the leaderboard, such as tables or charts
-    
+        gr.Markdown("### Leaderboard Data ###")
+        
+        with gr.Row():
+            # Define base and current dates as datetime objects
+            base_date = datetime(2024, 11, 1).strftime("%Y-%m-%d %H:%M:%S")
+            current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # Initialize DateTime components with datetime objects
+            start_time = gr.DateTime(base_date, label= "Start time")
+            end_time = gr.DateTime(current_date, label= "End time")
+
+        with gr.Row():
+            duration = gr.Radio(["Till now", "30m", "1h", "2h", "4h", "1d", "1w"], value="None", label="Duration", interactive = True)
+
+        duration.select(
+            fn = datetime_changer,
+            inputs = [],
+            outputs = [start_time, end_time]
+        )
+        # plot = gr.BarPlot(
+        #
+        # )
+
+
 # Launch the Gradio app
 app.launch(auth = authenticate)
