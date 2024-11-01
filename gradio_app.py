@@ -3,6 +3,8 @@ import os
 import shutil
 import re
 
+from gradio.components import gallery
+
 # Define the base directory structure
 BASE_DIR = "Amazon/Women"
 TRASH_DIR = {}
@@ -114,6 +116,38 @@ def update_gallery(selected_title, request: gr.Request):
     numbered_image_names = [f"{name} ({index+1})" for index, name in enumerate(image_names)]
     
     return image_files, gr.update(choices=numbered_image_names)
+
+
+def gallery_select_deselect(selected_images, evt: gr.SelectData, request: gr.Request):
+    username = str(request.username)
+    current_images = USER_STATE[username]["current_images"]
+    
+    # Convert the selected event index to a 1-based index
+    current_selected_image_index = int(evt.index) + 1
+
+    # Generate list of image names in format "filename (index)" from current_images
+    image_names = [f"{os.path.basename(img)} ({index+1})" for index, img in enumerate(current_images)]
+
+    # Extract indices from selected_images to check against the current selection
+    selected_images_indices = [int(name.split('(')[-1].strip(')')) for name in selected_images]
+
+    # Remove the item with the current selected index from selected_images if it already exists
+    selected_images = [name for name in selected_images if int(name.split('(')[-1].strip(')')) != current_selected_image_index]
+
+    # If the current selected index was removed, add it back from image_names
+    if current_selected_image_index not in selected_images_indices:
+        # Find the image with the current selected index in image_names
+        for img in image_names:
+            img_index = int(img.split('(')[-1].strip(')'))  # Extract index from "(index)"
+            if img_index == current_selected_image_index:
+                selected_images.append(img)  # Add the full name with "(index)" format
+                break  # Stop after adding to avoid duplicates
+
+    # Update the gallery with the new selection
+    return gr.Gallery(selected_index= None), gr.update(value=selected_images)
+
+
+
 
 # Function to create the Trash path with the same structure as BASE_DIR
 def create_trash_path(username, keyword, title):
@@ -361,7 +395,7 @@ with gr.Blocks() as app:
 
     with gr.Row():
         # Gallery for displaying images
-        image_gallery = gr.Gallery(label="Product Images", show_label=True, interactive=True)
+        image_gallery = gr.Gallery(label="Product Images", show_label=True, interactive=True, allow_preview= False)
 
         # Column for checkboxes and buttons
         with gr.Column():
@@ -460,6 +494,12 @@ with gr.Blocks() as app:
         fn=deselect_all_trash,
         inputs=[],
         outputs=trash_checkboxes
+    )
+
+    image_gallery.select(
+        fn = gallery_select_deselect,
+        inputs = [image_checkboxes],
+        outputs = [image_gallery, image_checkboxes]
     )
     
 
