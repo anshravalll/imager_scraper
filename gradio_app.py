@@ -1,4 +1,6 @@
 import gradio as gr
+from random import random, randint
+import pandas as pd
 import os
 import shutil
 import re
@@ -14,8 +16,8 @@ USER_STATE = {
         "keywords": [],  # To be populated with actual keywords
         "titles": [],    # Titles will load based on the current keyword
         "current_images": [],
-        "start_datetime": None,
-        "end_datetime": None
+        "start_datetime": datetime(2024, 11, 1),
+        "end_datetime": datetime.now()
     }
 }
 
@@ -28,8 +30,8 @@ def on_load(request: gr.Request):
             "keywords": [],
             "titles": [],
             "current_images": [],
-            "start_datetime": None,
-            "end_datetime": None
+            "start_datetime": datetime(2024, 11, 1),
+            "end_datetime": datetime.now()
         }
     update_trash(username)
     load_keywords(username)
@@ -38,7 +40,7 @@ def on_load(request: gr.Request):
 def update_trash(username):  
     
     # Define the user's specific trash directory path
-    user_trash_dir = os.path.join(username, BASE_DIR)
+    user_trash_dir = os.path.join("Annotation profiles", username, BASE_DIR)
     
     # Ensure the Trash directory exists for the user
     if not os.path.exists(user_trash_dir):
@@ -152,7 +154,7 @@ def gallery_select_deselect(selected_images, evt: gr.SelectData, request: gr.Req
 # Function to create the Trash path with the same structure as BASE_DIR
 def create_trash_path(username, keyword, title):
     # Define path in Trash that mirrors the original directory structure
-    trash_path = os.path.join(username, BASE_DIR, keyword, title, "Images")
+    trash_path = os.path.join(TRASH_DIR[username], keyword, title, "Images")
     os.makedirs(trash_path, exist_ok=True)
     return trash_path
 
@@ -292,7 +294,7 @@ def delete_unselected(selected_images, request: gr.Request):
     # Set up Trash path based on current keyword and title
     keyword = keywords[current_keyword_index]
     title = titles[current_title_index]
-    trash_dir = os.path.join(username, BASE_DIR, keyword, title, "Images")
+    trash_dir = create_trash_path(username, keyword, title)
     os.makedirs(trash_dir, exist_ok=True)
 
     # Move unselected images to Trash
@@ -417,6 +419,58 @@ def datetime_changer(request: gr.Request, evt: gr.SelectData):
         user_state["start_datetime"] = default_time
 
     return user_state["start_datetime"].strftime("%Y-%m-%d %H:%M:%S"), user_state["end_datetime"].strftime("%Y-%m-%d %H:%M:%S")
+
+def get_annoted_dir_len(current_username):
+    counter_list = []
+    for username in os.listdir("Annotation profiles"):
+        annoted_dir_counter = 0
+        base_path = os.path.join("Annotation profiles", username, BASE_DIR)
+        
+        # Append 0 if base path does not exist
+        if not os.path.exists(base_path):
+            counter_list.append(annoted_dir_counter)
+            continue
+
+        for keyword in os.listdir(base_path):
+            keyword_path = os.path.join(base_path, keyword)
+            
+            # Check if keyword path modification time is within the date range
+            mod_time = os.path.getmtime(keyword_path)
+            mod_timestamp = datetime.fromtimestamp(mod_time)
+            if not (USER_STATE[current_username]["start_datetime"] <= mod_timestamp <= USER_STATE[current_username]["end_datetime"]):
+                continue
+            
+            for title in os.listdir(keyword_path):
+                title_path = os.path.join(keyword_path, title)
+                
+                # Check if title path modification time is within the date range
+                title_mod_time = os.path.getmtime(title_path)
+                title_mod_timestamp = datetime.fromtimestamp(title_mod_time)
+                if not (USER_STATE[current_username]["start_datetime"] <= title_mod_timestamp <= USER_STATE[current_username]["end_datetime"]):
+                    continue
+                
+                # Check if Images directory exists and contains files
+                full_path = os.path.join(title_path, "Images")
+                if os.path.isdir(full_path) and len(os.listdir(full_path)) > 0:
+                    annoted_dir_counter += 1
+        
+        counter_list.append(annoted_dir_counter)
+    return counter_list
+
+def username_data_fn(request: gr.Request):
+    username = str(request.username)
+    username_data = pd.DataFrame({
+        "username": os.listdir(os.path.join("Annotation profiles")),
+        "annoted_content": get_annoted_dir_len(username)
+    })
+    return username_data
+
+def username_data_fake_fn():
+    username_data = pd.DataFrame({
+        "username": os.listdir(os.path.join("Annotation profiles")),
+        "annoted_content": [0 for _ in os.listdir(os.path.join("Annotation profiles"))]
+    })
+    return username_data
 
 load_keywords("ansh")
 load_titles("ansh")  # Load titles based on the current keyword of "ansh"oad_titles()  # Load titles for the first keyword
@@ -562,10 +616,27 @@ with gr.Blocks() as app:
             inputs = [],
             outputs = [start_time, end_time]
         )
-        # plot = gr.BarPlot(
-        #
-        # )
 
+        plot = gr.BarPlot(
+            value = username_data_fake_fn,
+            x = "username",
+            y = "annoted_content",
+            x_title= "Username",
+            y_title= "Annoted dirs",
+            sort= "-y",
+        )
+
+        start_time.change(
+            fn = username_data_fn,
+            inputs = None,
+            outputs = [plot]
+        )
+
+        end_time.change(
+            fn = username_data_fn,
+            inputs = None,
+            outputs = [plot]
+        )
 
 # Launch the Gradio app
 app.launch(auth = authenticate)
