@@ -559,4 +559,4 @@ with gr.Blocks() as app:
         )
 
 # Launch the Gradio app
-app.launch(auth=authenticate)
+app.launch(auth=authenticate, share = True)
