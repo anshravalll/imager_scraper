@@ -17,7 +17,8 @@ response = requests.get(url, headers=headers)
 if response.status_code == 200:
     # Parse the HTML content using BeautifulSoup
     soup = BeautifulSoup(response.content, 'html.parser')
-    # Print the prettified HTML
-    print(soup.prettify())
+    prettified_html = soup.prettify()
+    with open("page.html", 'a', encoding = 'utf-8') as file:
+        file.write(prettified_html)
 else:
     print(f"Failed to retrieve the page. Status code: {response.status_code}")
