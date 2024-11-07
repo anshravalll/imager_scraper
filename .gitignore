@@ -7,5 +7,5 @@
 !requirements.txt
 !utils.py
 !gradio_app.py
-!scraper_api.py
+!scraping_automator.py
 
