@@ -5,4 +5,4 @@ json
 gradio
 setuptools
 Pillow
-
+fake-useragent
