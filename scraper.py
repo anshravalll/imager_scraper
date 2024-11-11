@@ -31,6 +31,13 @@ PROXIES = [
     # Add more proxies as needed
 ]
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Amazon product scraper")
+    parser.add_argument('query', type=str, help="Search query for Amazon products")
+    parser.add_argument('pages', type=int, help="Number of pages to scrape")
+    parser.add_argument('output', type=str, help="Output CSV file name")
+    return parser.parse_args()
+
 def get_random_user_agent():
     ua = UserAgent()
     return ua.random
