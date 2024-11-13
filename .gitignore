@@ -1,7 +1,7 @@
 #Ignore everything
 *
 
-#Unignore:
+#Don't ignore these:
 !scraper.py
 !.gitignore
 !requirements.txt
