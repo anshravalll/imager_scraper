@@ -26,8 +26,6 @@ HEADERS = {
 
 # Proxy list (add your proxies here)
 PROXIES = [
-    'http://proxy1.com:8000',
-    'http://proxy2.com:8031',
     # Add more proxies as needed
 ]
 
