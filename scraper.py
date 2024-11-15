@@ -56,6 +56,9 @@ def fetch_page(url, retries=3, backoff_factor=1):
                 return response.content
             elif 500 <= response.status_code < 600:
                 logging.warning(f'Server error: {response.status_code} for URL: {url}')
+            elif response.status_code == 403:
+                logging.warning(f'403 Forbidden: Access Denied for URL: {url}')
+                break  # Might need to handle retries here
             else:
                 logging.warning(f'Client error: {response.status_code} for URL: {url}')
                 break  # Do not retry on client errors
