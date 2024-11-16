@@ -9,13 +9,6 @@ import argparse
 from fake_useragent import UserAgent
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Configure logging
-logging.basicConfig(
-    filename='amazon_scraper.log',
-    level=logging.INFO,
-    format='%(asctime)s:%(levelname)s:%(message)s'
-)
-
 # Amazon base URL
 BASE_URL = 'https://www.amazon.com'
 
@@ -28,6 +21,12 @@ HEADERS = {
 PROXIES = [
     # Add more proxies as needed
 ]
+# Configure logging
+logging.basicConfig(
+    filename='amazon_scraper.log',
+    level=logging.INFO,
+    format='%(asctime)s:%(levelname)s:%(message)s'
+)
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Amazon product scraper")
