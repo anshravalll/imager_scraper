@@ -6,7 +6,7 @@ from collections import Counter
 def process_directory(base_dir, source_dir=None, threshold_day=18, remove_duplicates=False, remove_empty_folders=False):
     total_removed = 0
     total_items = 0
-    counter = Counter()
+    counter = Counter({"total_removed_dirs": 0})  # Initialize with the key
 
     # 1. Remove duplicates (if requested)
     if remove_duplicates and source_dir:
