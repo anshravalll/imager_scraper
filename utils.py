@@ -45,11 +45,17 @@ def process_directory(base_dir, source_dir=None, threshold_day=18, remove_duplic
                     print(f"Removing {image_dir}")
         print(f"Total number of removed directories: {counter['total_removed_dirs']}")
 
-    return {
+    # Create summary
+    summary = {
         "total_removed": total_removed,
         "total_items": total_items,
         "total_removed_dirs": counter["total_removed_dirs"]
     }
+
+    # Log summary
+    log_summary(summary)
+
+    return summary
 
 def remove_file(file):
     try:
@@ -62,6 +68,14 @@ def remove_file(file):
     except Exception as e:
         print(f"Error: {e} - Skipping file or directory: {file.name}")
         return 0
+
+def log_summary(summary):
+    """Logs the summary of operations performed."""
+    print("\n--- Operation Summary ---")
+    print(f"Total items removed: {summary['total_removed']}")
+    print(f"Total items counted before threshold date: {summary['total_items']}")
+    print(f"Total directories removed: {summary['total_removed_dirs']}")
+    print("--- End of Summary ---\n")
 
 # Example of calling the function
 # result = process_directory("Amazon/Women", source_dir=r"C:\path\to\source\directory", remove_duplicates=True, remove_empty_folders=True)
