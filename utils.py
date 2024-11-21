@@ -9,12 +9,25 @@ def process_directory(base_dir, source_dir=None, threshold_day=18, remove_duplic
 
     # Remove duplicates
     if remove_duplicates and source_dir:
-        source_files = set(os.listdir(source_dir))
-        target_folders = sorted(os.listdir(base_dir), key=lambda x: os.path.getmtime(os.path.join(base_dir, x)))
+        try:
+            source_files = set(os.listdir(source_dir))
+        except Exception as e:
+            print(f"Error accessing source directory: {e}")
+            return
+        
+        try:
+            target_folders = sorted(os.listdir(base_dir), key=lambda x: os.path.getmtime(os.path.join(base_dir, x)))
+        except Exception as e:
+            print(f"Error accessing base directory: {e}")
+            return
         
         for folder in target_folders[:20]:
             folder_path = os.path.join(base_dir, folder)
-            files_in_folder = os.scandir(folder_path)
+            try:
+                files_in_folder = os.scandir(folder_path)
+            except Exception as e:
+                print(f"Error accessing folder {folder}: {e}")
+                continue
 
             count = sum(
                 remove_file(file) for file in files_in_folder if file.name in source_files
@@ -28,9 +41,18 @@ def process_directory(base_dir, source_dir=None, threshold_day=18, remove_duplic
         for folder in os.listdir(base_dir):
             folder_path = os.path.join(base_dir, folder)
             if os.path.isdir(folder_path):
-                mod_date = datetime.fromtimestamp(os.path.getmtime(folder_path))
+                try:
+                    mod_date = datetime.fromtimestamp(os.path.getmtime(folder_path))
+                except Exception as e:
+                    print(f"Error accessing modification time for {folder}: {e}")
+                    continue
+                
                 if mod_date <= current_date.replace(day=threshold_day):
-                    total_items += len(os.listdir(folder_path))
+                    try:
+                        total_items += len(os.listdir(folder_path))
+                    except Exception as e:
+                        print(f"Error accessing folder contents for {folder}: {e}")
+                        continue
         print(f"Total items modified before the threshold date: {total_items}")
 
     # Remove empty folders
@@ -39,10 +61,14 @@ def process_directory(base_dir, source_dir=None, threshold_day=18, remove_duplic
             folder_path = os.path.join(base_dir, folder)
             for subfolder in os.listdir(folder_path):
                 image_dir = os.path.join(folder_path, subfolder, "Images")
-                if not os.listdir(image_dir):
-                    os.removedirs(image_dir)
-                    counter["total_removed_dirs"] += 1
-                    print(f"Removing {image_dir}")
+                try:
+                    if not os.listdir(image_dir):
+                        os.removedirs(image_dir)
+                        counter["total_removed_dirs"] += 1
+                        print(f"Removing {image_dir}")
+                except Exception as e:
+                    print(f"Error accessing or removing {image_dir}: {e}")
+                    continue
         print(f"Total number of removed directories: {counter['total_removed_dirs']}")
 
     # Create summary
