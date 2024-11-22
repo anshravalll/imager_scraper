@@ -4,6 +4,20 @@ from datetime import datetime
 from collections import Counter
 
 def process_directory(base_dir, source_dir=None, threshold_day=18, remove_duplicates=False, remove_empty_folders=False):
+    """
+    Processes the specified directory by removing duplicates, counting items modified before a given threshold date, 
+    and optionally removing empty folders.
+
+    Parameters:
+        base_dir (str): The base directory to process.
+        source_dir (str, optional): The directory containing source files for duplicate removal. Defaults to None.
+        threshold_day (int, optional): The day threshold to filter items by modification date. Defaults to 18.
+        remove_duplicates (bool, optional): Whether to remove duplicate files. Defaults to False.
+        remove_empty_folders (bool, optional): Whether to remove empty folders. Defaults to False.
+
+    Returns:
+        dict: A summary of the operations performed, including the total items removed, counted, and directories removed.
+    """
     total_removed, total_items = 0, 0
     counter = Counter({"total_removed_dirs": 0})
 
