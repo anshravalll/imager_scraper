@@ -99,6 +99,9 @@ def process_directory(base_dir, source_dir=None, threshold_day=18, remove_duplic
 
 def remove_file(file):
     try:
+        if file.is_symlink():
+            print(f"Skipping symbolic link: {file.name}")
+            return 0
         if file.is_file():
             os.remove(file.path)
         elif file.is_dir():
