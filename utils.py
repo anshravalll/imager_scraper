@@ -30,7 +30,8 @@ def process_directory(base_dir, source_dir=None, threshold_day=18, remove_duplic
             return
         
         try:
-            target_folders = sorted(os.listdir(base_dir), key=lambda x: os.path.getmtime(os.path.join(base_dir, x)))
+            target_folders = [folder for folder in os.listdir(base_dir) if not folder.startswith('.')]
+            target_folders = sorted(target_folders, key=lambda x: os.path.getmtime(os.path.join(base_dir, x)))
         except Exception as e:
             print(f"Error accessing base directory: {e}")
             return
@@ -53,6 +54,8 @@ def process_directory(base_dir, source_dir=None, threshold_day=18, remove_duplic
     if not remove_duplicates:
         current_date = datetime.now()
         for folder in os.listdir(base_dir):
+            if folder.startswith('.'):
+                continue  # Skip hidden folders
             folder_path = os.path.join(base_dir, folder)
             if os.path.isdir(folder_path):
                 try:
@@ -72,6 +75,8 @@ def process_directory(base_dir, source_dir=None, threshold_day=18, remove_duplic
     # Remove empty folders
     if remove_empty_folders:
         for folder in os.listdir(base_dir):
+            if folder.startswith('.'):
+                continue  # Skip hidden folders
             folder_path = os.path.join(base_dir, folder)
             for subfolder in os.listdir(folder_path):
                 image_dir = os.path.join(folder_path, subfolder, "Images")
@@ -99,6 +104,9 @@ def process_directory(base_dir, source_dir=None, threshold_day=18, remove_duplic
 
 def remove_file(file):
     try:
+        if file.name.startswith('.'):
+            print(f"Skipping hidden file or directory: {file.name}")
+            return 0
         if file.is_symlink():
             print(f"Skipping symbolic link: {file.name}")
             return 0
