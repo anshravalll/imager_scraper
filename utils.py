@@ -48,39 +48,36 @@ def process_directory(base_dir, source_dir=None, threshold_day=18, remove_duplic
 def remove_duplicates_from_directory(base_dir, source_dir):
     """Removes duplicate files from the target directory based on the source directory."""
     total_removed = 0
-    try:
-        source_files = set(os.listdir(source_dir))
-    except Exception as e:
-        print(f"Error accessing source directory: {e}")
-        return total_removed
-    
-    try:
-        target_folders = [folder for folder in os.listdir(base_dir) if not folder.startswith('.')]
-        target_folders = sorted(target_folders, key=lambda x: os.path.getmtime(os.path.join(base_dir, x)))
-    except Exception as e:
-        print(f"Error accessing base directory: {e}")
-        return total_removed
-    
+
+    # Get list of source files
+    source_files = set(os.listdir(source_dir))
+
+    # Get target folders and sort by modification time
+    target_folders = [
+        folder for folder in os.listdir(base_dir)
+        if not folder.startswith('.')
+    ]
+    target_folders.sort(key=lambda x: os.path.getmtime(os.path.join(base_dir, x)))
+
+    # Loop through the first 20 folders
     for folder in target_folders[:20]:
         folder_path = os.path.join(base_dir, folder)
-        try:
-            files_in_folder = os.scandir(folder_path)
-        except Exception as e:
-            print(f"Error accessing folder {folder}: {e}")
-            continue
 
-        count = sum(
-            remove_file(file) for file in files_in_folder if file.name in source_files
-        )
-        total_removed += count
-        print(f"Total items removed from folder '{folder}': {count}\n")
-    
+        # Process files in the current folder
+        with os.scandir(folder_path) as files_in_folder:
+            count = sum(
+                remove_file(file) for file in files_in_folder if file.name in source_files
+            )
+            total_removed += count
+            print(f"Total items removed from folder '{folder}': {count}\n")
+
     return total_removed
 
 def count_items_before_threshold(base_dir, threshold_day):
     """Counts items modified before the given threshold date."""
     total_items = 0
     current_date = datetime.now()
+
     for folder in os.listdir(base_dir):
         if folder.startswith('.'):
             continue  # Skip hidden folders
