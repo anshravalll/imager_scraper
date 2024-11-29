@@ -45,13 +45,15 @@ def get_random_proxy():
         return random.choice(PROXIES)
     return None  # Return None if no proxies are available
 
-def fetch_page(url, retries=3, backoff_factor=1):
+def fetch_page(url, retries=3, backoff_factor=1, timeout=10):
+    """Fetch a page with retries and exponential backoff in case of errors."""
     for attempt in range(1, retries + 1):
         try:
             headers = HEADERS.copy()
             headers['User-Agent'] = get_random_user_agent()
             proxy = get_random_proxy()
-            response = requests.get(url, headers=headers, proxies={"http": proxy, "https": proxy} if proxy else None, timeout=10)
+            response = requests.get(url, headers=headers, proxies={"http": proxy, "https": proxy} if proxy else None, timeout=timeout)
+            
             if response.status_code == 200:
                 return response.content
             elif 500 <= response.status_code < 600:
@@ -64,9 +66,12 @@ def fetch_page(url, retries=3, backoff_factor=1):
                 break
         except requests.exceptions.RequestException as e:
             logging.error(f'Request exception: {e} for URL: {url} with proxy: {proxy}')
+        
+        # Exponential backoff
         sleep_time = backoff_factor * (2 ** (attempt - 1))
         logging.info(f'Attempt {attempt} failed. Sleeping for {sleep_time} seconds before retrying.')
         time.sleep(sleep_time)
+    
     logging.error(f'Failed to fetch URL after {retries} attempts: {url}')
     return None
 
