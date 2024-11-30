@@ -147,6 +147,8 @@ def scrape_amazon(search_query, num_pages, output_file):
     urls = [f"{BASE_URL}/s?k={search_query}&page={page}" for page in range(1, num_pages + 1)]
     all_products = []
 
+    logging.info(f"Starting to scrape {num_pages} pages for search query: {search_query}")
+
     with ThreadPoolExecutor(max_workers=5) as executor:
         future_to_url = {executor.submit(fetch_and_parse, url): url for url in urls}
         for future in as_completed(future_to_url):
@@ -166,7 +168,7 @@ def scrape_amazon(search_query, num_pages, output_file):
         for product in all_products:
             writer.writerow(product)
 
-    logging.info('Scraping completed.')
+    logging.info(f'Scraping completed. Extracted {len(all_products)} products in total from {num_pages} pages.')
 
 if __name__ == "__main__":
     args = parse_arguments()
