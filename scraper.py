@@ -52,6 +52,7 @@ def fetch_page(url, retries=3, backoff_factor=1, timeout=10):
             headers = HEADERS.copy()
             headers['User-Agent'] = get_random_user_agent()
             proxy = get_random_proxy()
+            # Refactored: Directly pass proxy to requests.get() method
             response = requests.get(url, headers=headers, proxies={"http": proxy, "https": proxy} if proxy else None, timeout=timeout)
             
             if response.status_code == 200:
