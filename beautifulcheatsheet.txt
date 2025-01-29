@@ -1,0 +1,19 @@
+.contents: Attribute for a tag object that gives a list of direct children tags.
+.attrs: To get a dictionary containing all attributes inside the tag.
+soup.get() or soup[]: Access those attributes directly.
+.descendants: Explore the whole tree with DFS (iterator).
+.children: Similar to .contents, but as an iterator (memory-efficient).
+.parent: Get the parent of the current tag.
+.next_sibling/.previous_sibling: Access the next or previous single sibling.
+.next_siblings/.previous_siblings: Access all siblings as an iterator.
+.name: Get the name of the tag.
+.string, .text, .get_text(): Explore the text content inside a tag.
+.find()/.find_all(): Locate tags using names, attributes, or filters.
+.select()/.select_one(): Locate tags using CSS selectors.
+.replace_with(): Replace the tag or its content with new data.
+.clear(): Clear the tag’s content without removing the tag.
+.extract(): Remove a tag and its contents, returning the removed tag.
+.decompose(): Completely remove a tag and its content (destructive).
+.prettify(): Format the HTML in a readable structure.
+.next_element/.previous_element: Traverse adjacent elements in the DOM tree.
+Handling comments: Use the Comment object to extract HTML comments.
