@@ -17,3 +17,172 @@ soup.get() or soup[]: Access those attributes directly.
 .prettify(): Format the HTML in a readable structure.
 .next_element/.previous_element: Traverse adjacent elements in the DOM tree.
 Handling comments: Use the Comment object to extract HTML comments.
+
+
+
+
+
+# .contents
+from bs4 import BeautifulSoup
+
+html = "<div><p>Hello</p><a href='#'>Link</a></div>"
+soup = BeautifulSoup(html, 'html.parser')
+
+div_tag = soup.div
+print(div_tag.contents)  # Output: [<p>Hello</p>, <a href="#">Link</a>]
+
+# .attrs
+html = '<a href="https://example.com" title="Example">Link</a>'
+soup = BeautifulSoup(html, 'html.parser')
+
+link_tag = soup.a
+print(link_tag.attrs)  # Output: {'href': 'https://example.com', 'title': 'Example'}
+
+# soup.get() or soup[]
+html = '<a href="https://example.com">Link</a>'
+soup = BeautifulSoup(html, 'html.parser')
+
+link_tag = soup.a
+print(link_tag['href'])  # Output: 'https://example.com'
+
+# .descendants
+html = '<div><p>Hello</p><a href="#">Link</a></div>'
+soup = BeautifulSoup(html, 'html.parser')
+
+div_tag = soup.div
+for descendant in div_tag.descendants:
+    print(descendant)
+# Output:
+# <p>Hello</p>
+# Hello
+# <a href="#">Link</a>
+# Link
+
+# .children
+html = '<div><p>Hello</p><a href="#">Link</a></div>'
+soup = BeautifulSoup(html, 'html.parser')
+
+div_tag = soup.div
+for child in div_tag.children:
+    print(child)
+# Output:
+# <p>Hello</p>
+# <a href="#">Link</a>
+
+# .parent
+html = '<div><p>Hello</p><a href="#">Link</a></div>'
+soup = BeautifulSoup(html, 'html.parser')
+
+p_tag = soup.p
+print(p_tag.parent)  # Output: <div><p>Hello</p><a href="#">Link</a></div>
+
+# .next_sibling / .previous_sibling
+html = '<div><p>Hello</p><a href="#">Link</a></div>'
+soup = BeautifulSoup(html, 'html.parser')
+
+p_tag = soup.p
+print(p_tag.next_sibling)  # Output: <a href="#">Link</a>
+print(p_tag.previous_sibling)  # Output: None (as <p> is the first child of <div>)
+
+# .next_siblings / .previous_siblings
+html = '<div><p>Hello</p><a href="#">Link</a><span>Text</span></div>'
+soup = BeautifulSoup(html, 'html.parser')
+
+p_tag = soup.p
+for sibling in p_tag.next_siblings:
+    print(sibling)
+# Output:
+# <a href="#">Link</a>
+# <span>Text</span>
+
+# .name
+html = '<a href="https://example.com">Link</a>'
+soup = BeautifulSoup(html, 'html.parser')
+
+link_tag = soup.a
+print(link_tag.name)  # Output: 'a'
+
+# .string, .text, .get_text()
+html = '<p>Hello <b>World</b></p>'
+soup = BeautifulSoup(html, 'html.parser')
+
+p_tag = soup.p
+print(p_tag.string)  # Output: 'Hello'
+print(p_tag.text)    # Output: 'Hello World'
+print(p_tag.get_text())  # Output: 'Hello World'
+
+# .find() / .find_all()
+html = """
+<html>
+    <body>
+        <h1>Heading</h1>
+        <p>First paragraph</p>
+        <p class="highlight">Second paragraph</p>
+        <a href="#">Link</a>
+        <p class="highlight">Third paragraph</p>
+    </body>
+</html>
+"""
+soup = BeautifulSoup(html, 'html.parser')
+
+# Find all <p> tags
+p_tags = soup.find_all('p')
+print(p_tags)  # Output: [<p>First paragraph</p>, <p class="highlight">Second paragraph</p>, <p class="highlight">Third paragraph</p>]
+
+# Find all <p> tags with class 'highlight'
+highlight_p_tags = soup.find_all('p', class_='highlight')
+print(highlight_p_tags)  # Output: [<p class="highlight">Second paragraph</p>, <p class="highlight">Third paragraph</p>]
+
+# .select() / .select_one()
+html = """
+<html>
+    <body>
+        <div class="content">
+            <p>First paragraph</p>
+            <p class="highlight">Second paragraph</p>
+        </div>
+    </body>
+</html>
+"""
+soup = BeautifulSoup(html, 'html.parser')
+
+# Using a CSS selector
+div_content = soup.select_one('.content')
+print(div_content)  # Output: <div class="content">...</div>
+
+# Find all <p> tags with class 'highlight'
+highlighted_paragraphs = soup.select('p.highlight')
+print(highlighted_paragraphs)  # Output: [<p class="highlight">Second paragraph</p>]
+
+# .replace_with()
+html = '<p>Old content</p>'
+soup = BeautifulSoup(html, 'html.parser')
+
+p_tag = soup.p
+p_tag.replace_with('<p>New content</p>')
+print(soup)  # Output: <p>New content</p>
+
+# .clear()
+html = '<p>Some content</p>'
+soup = BeautifulSoup(html, 'html.parser')
+
+p_tag = soup.p
+p_tag.clear()
+print(soup)  # Output: <p></p>
+
+# .extract()
+html = '<p>Some content</p>'
+soup = BeautifulSoup(html, 'html.parser')
+
+p_tag = soup.p
+removed_tag = p_tag.extract()
+print(removed_tag)  # Output: <p>Some content</p>
+print(soup)  # Output: ''
+
+# .decompose()
+html = '<p>Some content</p>'
+soup = BeautifulSoup(html, 'html.parser')
+
+p_tag = soup.p
+p_tag.decompose()
+print(soup)  # Output: ''
