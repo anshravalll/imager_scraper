@@ -1,4 +1,4 @@
-Below are the common methods used in beautifulsoup
+Below are the common methods used in beautifulsoup:
 
 .contents: Attribute for a tag object that gives a list of direct children tags.
 .attrs: To get a dictionary containing all attributes inside the tag.
