@@ -1,176 +1,119 @@
 import requests
+import json
 from bs4 import BeautifulSoup
-import time
-import csv
-import logging
-import random
-from urllib.parse import urljoin
-import argparse
-from fake_useragent import UserAgent
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections import defaultdict
 
-# Amazon base URL
-BASE_URL = 'https://www.amazon.com'
+tag_dict = defaultdict(dict)
 
-# Custom headers with user-agent rotation
-HEADERS = {
-    'Accept-Language': 'en-US,en;q=0.9',
+def find_asin(soup):
+    for parent in soup.parents:
+        if parent.name == "div" and "puis-card-container" in parent.get("class", {}) and "s-card-container" in parent.get("class", {}):
+            return parent["data-dib-asin"]
+
+def reviews_number(soup):
+    review_component = soup.find_all("div", {"data-csa-c-content-id": "alf-customer-ratings-count-component"})
+    for each_component in review_component:
+        total_reviews = each_component.find("span").get_text()
+        asin = find_asin(each_component)
+        tag_dict[asin]["total_reviews"] = total_reviews
+        print(total_reviews)
+        return total_reviews
+    print("got asin from review_number")
+
+def stars_number(soup):
+    star_component = soup.find_all("i", {"data_cy": "reviews-rating-slot"})
+    for each_component in star_component:
+        stars = each_component.parent.get("aria-label").split()[0]
+        asin = find_asin(each_component)
+        tag_dict[asin]["stars"] = stars
+        print(stars)
+        return stars
+    print("Got asin from strars_number")
+
+def info_tags(soup):
+    badge_component = soup.find_all("span", {"data-component-type": "s-status-badge-component"})
+    for element in badge_component:
+        tag_str = element["data-component-props"]
+        tag = json.loads(tag_str) 
+        asin = find_asin(element) 
+        badge_type = tag["badgeType"]
+        if badge_type == "amazons-choice":
+            tag_dict[asin]["Is_amazon_choice"] = True
+        elif badge_type == "best-seller":
+            tag_dict[asin]["Is_best_seller"] = True
+        else:
+            tag_dict[asin]["Other_tags"] = True
+    print("Got the Asin from info_tags")
+
+    return tag_dict
+
+def get_image_url(soup):
+    images = soup.find_all("img", {"class": "s-image"})
+    image_url = []
+    for image in images:
+        asin = find_asin(image)
+        image_url = [image['src']]
+        tag_dict[asin]["Image_url"] = image_url
+    print("Got the asin from image_url")
+    return image_url
+
+def get_title(soup):
+    titles = []
+    class_string = "a-section a-spacing-small puis-padding-left-small puis-padding-right-small"
+    div = soup.find_all("div", {"class": class_string})
+    for lower_part in div:
+        asin = find_asin(lower_part)
+        title = lower_part.find("h2")
+        titles.append(title["aria-label"])
+        tag_dict[asin]["Title"] = title["aria-label"]
+    print("Got the asinn from titles")
+    return titles
+
+def get_price(soup):
+    result = []
+    outer_span = soup.find_all("span", {"class": "a-price"})
+    for span in outer_span:
+        asin = find_asin(span)
+        price_tag = span.find("span", {"class": "a-offscreen"})
+        price = price_tag.get_text(strip=True) if price_tag else "Price not found"
+        result.append(price) 
+        tag_dict[asin]["Price"] = price
+    print("Got the asin from prices")
+    return result
+
+def wrapper(soup):
+    get_price(soup)
+    get_title(soup)
+    info_tags(soup)
+    get_image_url(soup)
+    reviews_number(soup)
+    stars_number(soup)
+
+    for each_asin in tag_dict.keys():
+        print(f"{each_asin}:    ")
+        for each_attribute in tag_dict[each_asin].keys():
+            print(f"{each_attribute}:    {tag_dict[each_asin][each_attribute]}") 
+        print(end = "\n\n\n")
+# Amazon URL
+url = 'https://www.amazon.com/s?k=gamings'
+
+# Custom headers
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
+    'Referer': 'https://google.com',
+    'Origin': 'https://www.amazon.com',
+    "Accept-Language": "en-US"
 }
 
-# Proxy list (add your proxies here)
-PROXIES = [
-    # Add more proxies as needed
-]
+# Make a GET request to fetch the raw HTML content
+response = requests.get(url, headers=headers)
 
-# Configure logging
-logging.basicConfig(
-    filename='amazon_scraper.log',
-    level=logging.INFO,
-    format='%(asctime)s:%(levelname)s:%(message)s'
-)
-
-def parse_arguments():
-    parser = argparse.ArgumentParser(description="Amazon product scraper")
-    parser.add_argument('query', type=str, help="Search query for Amazon products")
-    parser.add_argument('pages', type=int, help="Number of pages to scrape")
-    parser.add_argument('output', type=str, help="Output CSV file name")
-    return parser.parse_args()
-
-def get_random_user_agent():
-    ua = UserAgent()
-    return ua.random
-
-def get_random_proxy():
-    if PROXIES:
-        return random.choice(PROXIES)
-    return None  # Return None if no proxies are available
-
-def fetch_page(url, retries=3, backoff_factor=1, timeout=10):
-    """Fetch a page with retries and exponential backoff in case of errors."""
-    for attempt in range(1, retries + 1):
-        try:
-            headers = HEADERS.copy()
-            headers['User-Agent'] = get_random_user_agent()
-            proxy = get_random_proxy()
-            # Refactored: Directly pass proxy to requests.get() method
-            response = requests.get(url, headers=headers, proxies={"http": proxy, "https": proxy} if proxy else None, timeout=timeout)
-            
-            if response.status_code == 200:
-                return response.content
-            elif 500 <= response.status_code < 600:
-                logging.warning(f'Server error: {response.status_code} for URL: {url}')
-            elif response.status_code == 403:
-                logging.warning(f'403 Forbidden: Access Denied for URL: {url}')
-                break
-            else:
-                logging.warning(f'Client error: {response.status_code} for URL: {url}')
-                break
-        except requests.exceptions.RequestException as e:
-            logging.error(f'Request exception: {e} for URL: {url} with proxy: {proxy}')
-        
-        # Exponential backoff
-        sleep_time = backoff_factor * (2 ** (attempt - 1))
-        logging.info(f'Attempt {attempt} failed. Sleeping for {sleep_time} seconds before retrying.')
-        time.sleep(sleep_time)
-    
-    logging.error(f'Failed to fetch URL after {retries} attempts: {url}')
-    return None
-
-def parse_product(item):
-    # Skip sponsored products
-    if item.select_one('span.s-sponsored-label-text'):
-        return None
-
-    def parse_price(item):
-        price_whole = item.select_one('span.a-price-whole')
-        price_fraction = item.select_one('span.a-price-fraction')
-        if price_whole and price_fraction:
-            return float(price_whole.get_text(strip=True).replace(',', '') + '.' + price_fraction.get_text(strip=True))
-        return None
-
-    def parse_rating(item):
-        rating_tag = item.select_one('span.a-icon-alt')
-        if rating_tag:
-            try:
-                return float(rating_tag.get_text(strip=True).split(' out of')[0])
-            except ValueError:
-                return None
-        return None
-
-    def parse_reviews(item):
-        reviews_tag = item.select_one('span.a-size-base')
-        if reviews_tag:
-            try:
-                return int(reviews_tag.get_text(strip=True).replace(',', ''))
-            except ValueError:
-                return None
-        return None
-
-    # Extract title
-    title_tag = item.select_one('h2 a.a-link-normal.a-text-normal span')
-    title = title_tag.get_text(strip=True) if title_tag else 'No title'
-
-    # Extract price
-    price = parse_price(item)
-
-    # Extract rating
-    rating = parse_rating(item)
-
-    # Extract number of reviews
-    reviews = parse_reviews(item)
-
-    # Extract product URL
-    url_tag = item.select_one('h2 a.a-link-normal.a-text-normal')
-    product_url = urljoin(BASE_URL, url_tag['href']) if url_tag else 'No URL'
-
-    # Extract image URL
-    img_tag = item.select_one('img.s-image')
-    image_url = img_tag['src'] if img_tag else 'No image URL'
-
-    return {
-        'Title': title,
-        'Price': price,
-        'Rating': rating,
-        'Number of Reviews': reviews,
-        'Product URL': product_url,
-        'Image URL': image_url
-    }
-
-def fetch_and_parse(url):
-    html_content = fetch_page(url)
-    if not html_content:
-        return []
-    soup = BeautifulSoup(html_content, 'html.parser')
-    products = [parse_product(item) for item in soup.select('.s-main-slot .s-result-item') if parse_product(item)]
-    return products
-
-def scrape_amazon(search_query, num_pages, output_file):
-    urls = [f"{BASE_URL}/s?k={search_query}&page={page}" for page in range(1, num_pages + 1)]
-    all_products = []
-
-    logging.info(f"Starting to scrape {num_pages} pages for search query: {search_query}")
-
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        future_to_url = {executor.submit(fetch_and_parse, url): url for url in urls}
-        for future in as_completed(future_to_url):
-            url = future_to_url[future]
-            try:
-                products = future.result()
-                all_products.extend(products)
-                logging.info(f'Extracted {len(products)} products from URL: {url}')
-            except Exception as e:
-                logging.error(f'Error fetching/parsing URL {url}: {e}')
-
-    # Write all products to CSV
-    with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['Title', 'Price', 'Rating', 'Number of Reviews', 'Product URL', 'Image URL']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-        for product in all_products:
-            writer.writerow(product)
-
-    logging.info(f'Scraping completed. Extracted {len(all_products)} products in total from {num_pages} pages.')
-
-if __name__ == "__main__":
-    args = parse_arguments()
-    scrape_amazon(args.query, args.pages, args.output)
+# Check if the request was successful
+if response.status_code == 200:
+    # Parse the HTML content using BeautifulSoup
+    soup = BeautifulSoup(response.content, 'html.parser')
+    wrapper(soup)
+    # Print the prettified HTML
+    # print(soup.prettify())
+else:
+    print(f"Failed to retrieve the page. Status code: {response.status_code}")
