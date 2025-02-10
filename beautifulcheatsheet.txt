@@ -20,7 +20,7 @@ soup.get() or soup[]: Access those attributes directly.
 .next_element/.previous_element: Traverse adjacent elements in the DOM tree.
 Handling comments: Use the Comment object to extract HTML comments.
 
-Each common beautifulsoup syntax with examples
+Each common beautifulsoup syntax with examples:
 
 # .contents
 from bs4 import BeautifulSoup
