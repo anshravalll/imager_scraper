@@ -15,20 +15,18 @@ def reviews_number(soup):
     for each_component in review_component:
         total_reviews = each_component.find("span").get_text()
         asin = find_asin(each_component)
+        print(asin)
         tag_dict[asin]["total_reviews"] = total_reviews
-        print(total_reviews)
         return total_reviews
-    print("got asin from review_number")
 
 def stars_number(soup):
-    star_component = soup.find_all("i", {"data_cy": "reviews-rating-slot"})
+    star_component = soup.find_all("i", {"data-cy": "reviews-ratings-slot"})
     for each_component in star_component:
         stars = each_component.parent.get("aria-label").split()[0]
         asin = find_asin(each_component)
+        print(asin)
         tag_dict[asin]["stars"] = stars
-        print(stars)
         return stars
-    print("Got asin from strars_number")
 
 def info_tags(soup):
     badge_component = soup.find_all("span", {"data-component-type": "s-status-badge-component"})
