@@ -15,20 +15,14 @@ def reviews_number(soup):
     for each_component in review_component:
         total_reviews = each_component.find("span").get_text()
         asin = find_asin(each_component)
-        print(asin)
         tag_dict[asin]["Total_reviews"] = total_reviews
-        print(total_reviews)
-        return total_reviews
 
 def stars_number(soup):
     star_component = soup.find_all("i", {"data-cy": "reviews-ratings-slot"})
     for each_component in star_component:
         stars = each_component.parent.get("aria-label").split()[0]
         asin = find_asin(each_component)
-        print(asin)
-        print(stars)
         tag_dict[asin]["Stars"] = stars
-        return stars
 
 def info_tags(soup):
     badge_component = soup.find_all("span", {"data-component-type": "s-status-badge-component"})
@@ -43,7 +37,6 @@ def info_tags(soup):
             tag_dict[asin]["Is_best_seller"] = True
         else:
             tag_dict[asin]["Other_tags"] = True
-    print("Got the Asin from info_tags")
 
     return tag_dict
 
@@ -54,7 +47,6 @@ def get_image_url(soup):
         asin = find_asin(image)
         image_url = [image['src']]
         tag_dict[asin]["Image_url"] = image_url
-    print("Got the asin from image_url")
     return image_url
 
 def get_title(soup):
@@ -63,10 +55,14 @@ def get_title(soup):
     div = soup.find_all("div", {"class": class_string})
     for lower_part in div:
         asin = find_asin(lower_part)
-        title = lower_part.find("h2")
-        titles.append(title["aria-label"])
-        tag_dict[asin]["Title"] = title["aria-label"]
-    print("Got the asinn from titles")
+        title_header = lower_part.find("h2")
+        title = title_header["aria-label"]
+        if title.split()[0] == "Sponsored":
+            tag_dict[asin]["Is_sponsored"] = True
+            title = title.split()
+            title = " ".join(title[3:])
+        titles.append(title)
+        tag_dict[asin]["Title"] = title
     return titles
 
 def get_price(soup):
@@ -78,14 +74,13 @@ def get_price(soup):
         price = price_tag.get_text(strip=True) if price_tag else "Price not found"
         result.append(price) 
         tag_dict[asin]["Price"] = price
-    print("Got the asin from prices")
     return result
 
 def wrapper(soup):
-    # get_price(soup)
-    # get_title(soup)
-    # info_tags(soup)
-    # get_image_url(soup)
+    get_price(soup)
+    get_title(soup)
+    info_tags(soup)
+    get_image_url(soup)
     reviews_number(soup)
     stars_number(soup)
 
