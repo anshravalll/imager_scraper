@@ -16,7 +16,8 @@ def reviews_number(soup):
         total_reviews = each_component.find("span").get_text()
         asin = find_asin(each_component)
         print(asin)
-        tag_dict[asin]["total_reviews"] = total_reviews
+        tag_dict[asin]["Total_reviews"] = total_reviews
+        print(total_reviews)
         return total_reviews
 
 def stars_number(soup):
@@ -25,7 +26,8 @@ def stars_number(soup):
         stars = each_component.parent.get("aria-label").split()[0]
         asin = find_asin(each_component)
         print(asin)
-        tag_dict[asin]["stars"] = stars
+        print(stars)
+        tag_dict[asin]["Stars"] = stars
         return stars
 
 def info_tags(soup):
@@ -80,10 +82,10 @@ def get_price(soup):
     return result
 
 def wrapper(soup):
-    get_price(soup)
-    get_title(soup)
-    info_tags(soup)
-    get_image_url(soup)
+    # get_price(soup)
+    # get_title(soup)
+    # info_tags(soup)
+    # get_image_url(soup)
     reviews_number(soup)
     stars_number(soup)
 
