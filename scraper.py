@@ -117,7 +117,7 @@ if response.status_code == 200:
     # Parse the HTML content using BeautifulSoup
     soup = BeautifulSoup(response.content, 'html.parser')
     wrapper(soup)
-    # Optionally print the prettified HTML
+    
     # print(soup.prettify())
 else:
     print(f"Failed to retrieve the page. Status code: {response.status_code}")
